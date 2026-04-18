@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Smart Study Desk — AI Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#04080f;--bg2:#080e1a;--card:#0a1020;--card2:#0d1428;
+  --border:#0f2040;--border2:#1a3060;
+  --text:#c8d8f0;--muted:#4a6080;--dim:#2a4060;
+  --blue:#00aaff;--cyan:#00eeff;--green:#00ff88;
+  --red:#ff3355;--amber:#ffaa00;--purple:#aa44ff;--orange:#ff6600;
+  --blue-glow:rgba(0,170,255,0.3);--cyan-glow:rgba(0,238,255,0.2);
+  --green-glow:rgba(0,255,136,0.25);--red-glow:rgba(255,51,85,0.3);
+}
+html,body{height:100%;overflow-x:hidden;cursor:default;}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;}
+
+/* ══ PRELOADER ══════════════════════════════════════════ */
+#preloader{
+  position:fixed;inset:0;z-index:9999;
+  background:#04080f;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:32px;
+  transition:opacity 0.8s ease, transform 0.8s ease;
+}
+#preloader.hide{opacity:0;transform:scale(1.05);pointer-events:none;}
+.pre-logo{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  animation:preLogoIn 0.8s ease both;
+}
+@keyframes preLogoIn{from{opacity:0;transform:translateY(-30px);}to{opacity:1;transform:translateY(0);}}
+.pre-icon{
+  width:80px;height:80px;position:relative;
+  animation:preSpin 4s linear infinite;
+}
+@keyframes preSpin{to{transform:rotate(360deg);}}
+.pre-title{
+  font-family:'Orbitron',monospace;font-size:22px;font-weight:700;
+  background:linear-gradient(135deg,var(--cyan),var(--blue),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:4px;text-align:center;
+}
+.pre-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:3px;}
+/* Scanning bar */
+.pre-scan-wrap{width:320px;position:relative;}
+.pre-scan-label{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--cyan);letter-spacing:2px;margin-bottom:8px;
+  display:flex;justify-content:space-between;
+}
+.pre-bar-bg{height:2px;background:var(--border2);border-radius:2px;overflow:hidden;}
+.pre-bar-fill{
+  height:100%;width:0;border-radius:2px;
+  background:linear-gradient(90deg,var(--blue),var(--cyan));
+  box-shadow:0 0 12px var(--cyan);
+  animation:preBarFill 2.5s cubic-bezier(0.4,0,0.2,1) both 0.3s;
+}
+@keyframes preBarFill{to{width:100%;}}
+.pre-steps{
+  margin-top:16px;display:flex;flex-direction:column;gap:6px;
+}
+.pre-step{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--muted);display:flex;align-items:center;gap:8px;
+  opacity:0;animation:stepIn 0.4s ease both;
+}
+.pre-step.ok{color:var(--green);}
+.pre-step::before{content:'›';color:var(--cyan);}
+.pre-step:nth-child(1){animation-delay:0.4s;}
+.pre-step:nth-child(2){animation-delay:0.9s;}
+.pre-step:nth-child(3){animation-delay:1.4s;}
+.pre-step:nth-child(4){animation-delay:1.9s;}
+@keyframes stepIn{to{opacity:1;}}
+
+/* ══ THREE.JS CANVAS ════════════════════════════════════ */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+
+/* ══ SCANLINE OVERLAY ═══════════════════════════════════ */
+.scanlines{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);
+}
+
+/* ══ PAGE ════════════════════════════════════════════════ */
+.page{position:relative;z-index:2;padding:20px;max-width:1440px;margin:0 auto;}
+
+/* ══ HEADER ══════════════════════════════════════════════ */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 28px;margin-bottom:20px;
+  background:rgba(8,14,26,0.92);
+  border:1px solid var(--border2);border-radius:16px;
+  backdrop-filter:blur(24px);
+  box-shadow:0 0 40px rgba(0,170,255,0.06),inset 0 1px 0 rgba(0,238,255,0.08);
+  animation:headerIn 0.6s ease both 2.8s;
+}
+@keyframes headerIn{from{opacity:0;transform:translateY(-16px);}to{opacity:1;transform:translateY(0);}}
+
+/* Logo */
+.logo{display:flex;align-items:center;gap:16px;}
+.logo-svg{
+  width:48px;height:48px;flex-shrink:0;
+  filter:drop-shadow(0 0 12px var(--cyan));
+  animation:logoPulse 3s ease-in-out infinite;
+}
+@keyframes logoPulse{
+  0%,100%{filter:drop-shadow(0 0 10px var(--cyan));}
+  50%{filter:drop-shadow(0 0 24px var(--blue)) drop-shadow(0 0 40px rgba(0,170,255,0.4));}
+}
+.logo-text h1{
+  font-family:'Orbitron',monospace;font-size:17px;font-weight:700;
+  background:linear-gradient(135deg,var(--cyan) 0%,var(--blue) 50%,var(--purple) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:2px;
+}
+.logo-text p{font-size:11px;color:var(--muted);letter-spacing:2px;margin-top:2px;font-family:'JetBrains Mono',monospace;}
+
+/* Header right */
+.header-right{display:flex;align-items:center;gap:24px;}
+.session-box{text-align:right;}
+.session-box .lbl{font-size:9px;color:var(--muted);letter-spacing:2px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;}
+.session-box .clk{
+  font-family:'Orbitron',monospace;font-size:24px;font-weight:700;
+  color:var(--cyan);letter-spacing:3px;
+  text-shadow:0 0 20px rgba(0,238,255,0.5);
+}
+.live-pill{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 16px;border-radius:20px;
+  background:rgba(0,255,136,0.06);
+  border:1px solid rgba(0,255,136,0.25);
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);
+}
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
+
+/* ══ TOAST ALERT SYSTEM ══════════════════════════════════ */
+#toast-container{
+  position:fixed;top:24px;right:24px;z-index:9000;
+  display:flex;flex-direction:column;gap:10px;pointer-events:none;
+}
+.toast{
+  display:flex;align-items:center;gap:14px;
+  padding:16px 20px;border-radius:14px;
+  backdrop-filter:blur(20px);min-width:320px;max-width:400px;
+  border:1px solid transparent;pointer-events:all;
+  transform:translateX(120%);opacity:0;
+  transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+.toast.show{transform:translateX(0);opacity:1;}
+.toast.hide{transform:translateX(120%);opacity:0;transition:transform 0.4s ease,opacity 0.4s ease;}
+.toast-good{background:rgba(0,255,136,0.08);border-color:rgba(0,255,136,0.35);color:var(--green);}
+.toast-posture{background:rgba(255,51,85,0.1);border-color:rgba(255,51,85,0.45);color:var(--red);}
+.toast-phone{background:rgba(255,170,0,0.08);border-color:rgba(255,170,0,0.4);color:var(--amber);}
+.toast-environment{background:rgba(170,68,255,0.08);border-color:rgba(170,68,255,0.4);color:var(--purple);}
+.toast-light{background:rgba(255,102,0,0.08);border-color:rgba(255,102,0,0.4);color:var(--orange);}
+.toast-icon{font-size:26px;animation:toastIconPop 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes toastIconPop{from{transform:scale(0)rotate(-20deg);}to{transform:scale(1)rotate(0);}}
+.toast-body{flex:1;}
+.toast-title{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:1px;}
+.toast-msg{font-size:12px;opacity:0.75;margin-top:2px;}
+.toast-close{font-size:16px;opacity:0.5;cursor:pointer;padding:4px;}
+.toast-close:hover{opacity:1;}
+.toast-progress{
+  position:absolute;bottom:0;left:0;height:2px;border-radius:0 0 14px 14px;
+  background:currentColor;opacity:0.4;animation:toastProgress 4s linear forwards;
+}
+@keyframes toastProgress{from{width:100%;}to{width:0;}}
+
+/* Screen flash on alert */
+.flash-overlay{
+  position:fixed;inset:0;z-index:8000;pointer-events:none;opacity:0;
+  transition:opacity 0.1s;
+}
+.flash-overlay.flash{animation:screenFlash 0.5s ease;}
+@keyframes screenFlash{0%{opacity:0;}20%{opacity:0.12;}100%{opacity:0;}}
+
+/* ══ CONTROLS ════════════════════════════════════════════ */
+.control-panel{
+  display:grid;grid-template-columns:auto 1fr 1fr;align-items:center;gap:16px;
+  padding:18px 24px;margin-bottom:16px;
+  background:rgba(8,14,26,0.92);border:1px solid var(--border2);border-radius:14px;
+  backdrop-filter:blur(20px);
+  animation:fadeUp 0.5s ease both;animation-delay:3s;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.ctrl-section-label{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  color:var(--muted);letter-spacing:3px;text-transform:uppercase;white-space:nowrap;
+}
+.ctrl-btn{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;border-radius:10px;border:1px solid var(--border2);
+  background:rgba(255,255,255,0.02);cursor:pointer;
+  transition:all 0.3s;color:var(--text);
+}
+.ctrl-btn:hover{border-color:var(--blue);background:rgba(0,170,255,0.06);transform:translateY(-1px);}
+.ctrl-btn.active{border-color:var(--cyan);background:rgba(0,238,255,0.06);box-shadow:0 0 20px rgba(0,238,255,0.1);}
+.btn-left{display:flex;align-items:center;gap:10px;}
+.btn-icon{font-size:18px;}
+.btn-name{font-family:'Rajdhani',sans-serif;font-weight:600;font-size:14px;}
+.btn-stat{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
+.toggle{position:relative;width:44px;height:22px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.tslider{position:absolute;inset:0;border-radius:22px;background:#0f2040;transition:0.3s;cursor:pointer;}
+.tslider:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;border-radius:50%;background:var(--muted);transition:0.3s;}
+input:checked+.tslider{background:linear-gradient(135deg,var(--blue),var(--cyan));box-shadow:0 0 14px var(--blue-glow);}
+input:checked+.tslider:before{transform:translateX(22px);background:#fff;}
+
+/* ══ STAT ROW ════════════════════════════════════════════ */
+.stat-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px;}
+.stat-card{
+  padding:16px 18px;border-radius:12px;
+  background:rgba(8,14,26,0.92);border:1px solid var(--border2);
+  backdrop-filter:blur(20px);transition:transform 0.3s,box-shadow 0.3s;
+  animation:fadeUp 0.5s ease both;
+  position:relative;overflow:hidden;
+}
+.stat-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  opacity:0.4;
+}
+.stat-card:nth-child(1){animation-delay:3.1s;}
+.stat-card:nth-child(2){animation-delay:3.15s;}
+.stat-card:nth-child(3){animation-delay:3.2s;}
+.stat-card:nth-child(4){animation-delay:3.25s;}
+.stat-card:nth-child(5){animation-delay:3.3s;}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 30px rgba(0,170,255,0.12);}
+.stat-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;}
+.stat-val{font-family:'Orbitron',monospace;font-size:26px;font-weight:700;line-height:1;}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace;}
+.c-cyan{color:var(--cyan);text-shadow:0 0 16px rgba(0,238,255,0.5);}
+.c-green{color:var(--green);text-shadow:0 0 16px rgba(0,255,136,0.4);}
+.c-red{color:var(--red);text-shadow:0 0 16px rgba(255,51,85,0.4);}
+.c-amber{color:var(--amber);text-shadow:0 0 16px rgba(255,170,0,0.4);}
+.c-purple{color:var(--purple);text-shadow:0 0 16px rgba(170,68,255,0.4);}
+.c-orange{color:var(--orange);}
+
+/* ══ ALERT BANNER ════════════════════════════════════════ */
+#alert-banner{
+  padding:16px 24px;border-radius:14px;margin-bottom:16px;
+  display:flex;align-items:center;gap:16px;
+  border:1px solid transparent;backdrop-filter:blur(20px);
+  transition:all 0.5s cubic-bezier(0.4,0,0.2,1);
+  animation:fadeUp 0.5s ease both 3.35s;
+  position:relative;overflow:hidden;
+}
+#alert-banner::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.02) 50%,transparent 100%);
+  transform:translateX(-100%);animation:bannerShimmer 3s ease infinite;
+}
+@keyframes bannerShimmer{to{transform:translateX(100%);}}
+#alert-banner.good{background:rgba(0,255,136,0.04);border-color:rgba(0,255,136,0.2);color:var(--green);}
+#alert-banner.posture{background:rgba(255,51,85,0.06);border-color:rgba(255,51,85,0.35);color:var(--red);animation:bannerPulse 1s ease 3;}
+#alert-banner.phone{background:rgba(255,170,0,0.05);border-color:rgba(255,170,0,0.35);color:var(--amber);animation:bannerPulse 1s ease 3;}
+#alert-banner.environment{background:rgba(170,68,255,0.05);border-color:rgba(170,68,255,0.3);color:var(--purple);}
+#alert-banner.light{background:rgba(255,102,0,0.05);border-color:rgba(255,102,0,0.3);color:var(--orange);}
+@keyframes bannerPulse{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+.banner-icon{font-size:30px;filter:drop-shadow(0 0 8px currentColor);}
+.banner-content{flex:1;}
+.banner-title{font-family:'Orbitron',monospace;font-size:13px;font-weight:700;letter-spacing:1px;}
+.banner-sub{font-size:12px;opacity:0.6;margin-top:3px;font-family:'JetBrains Mono',monospace;}
+.banner-bar{height:2px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:8px;overflow:hidden;}
+.banner-bar-fill{height:100%;border-radius:2px;background:currentColor;box-shadow:0 0 8px currentColor;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);}
+
+/* ══ MAIN GRID ═══════════════════════════════════════════ */
+.main-grid{display:grid;grid-template-columns:280px 1fr 320px;gap:16px;margin-bottom:16px;}
+
+/* ══ CARDS ═══════════════════════════════════════════════ */
+.card{
+  background:rgba(8,14,26,0.92);border:1px solid var(--border2);
+  border-radius:16px;padding:20px;backdrop-filter:blur(20px);
+  transition:transform 0.3s,box-shadow 0.3s;
+  animation:fadeUp 0.5s ease both;position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--border2),transparent);
+}
+.card:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.3);}
+.card-lbl{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  color:var(--muted);letter-spacing:2px;text-transform:uppercase;
+  margin-bottom:16px;display:flex;align-items:center;gap:6px;
+}
+.card-lbl::before{content:'';width:16px;height:1px;background:currentColor;opacity:0.4;}
+
+/* ══ ARC GAUGES ══════════════════════════════════════════ */
+.gauges-grid{display:flex;flex-direction:column;gap:16px;}
+.gauge-item{display:flex;align-items:center;gap:14px;}
+.gauge-svg{flex-shrink:0;overflow:visible;}
+.gauge-track{fill:none;stroke:#0f2040;stroke-width:8;stroke-linecap:round;}
+.gauge-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1),stroke 0.5s;}
+.gauge-val{font-family:'Orbitron',monospace;font-size:15px;font-weight:700;fill:currentColor;text-anchor:middle;dominant-baseline:central;}
+.gauge-lbl{font-size:10px;fill:var(--muted);font-family:'JetBrains Mono',sans-serif;}
+.gauge-info{flex:1;}
+.gauge-name{font-weight:600;font-size:13px;font-family:'Rajdhani',sans-serif;}
+.gauge-reading{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;}
+.gauge-status{font-size:11px;margin-top:4px;font-family:'JetBrains Mono',monospace;}
+
+/* ══ STATUS ITEMS ════════════════════════════════════════ */
+.status-list{display:flex;flex-direction:column;gap:10px;}
+.status-item{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border-radius:10px;border:1px solid var(--border);
+  background:rgba(255,255,255,0.01);transition:all 0.4s;
+}
+.status-item.alert-bad{
+  border-color:rgba(255,51,85,0.4);background:rgba(255,51,85,0.05);
+  animation:statusPulse 1.5s ease-in-out infinite;
+}
+.status-item.alert-warn{
+  border-color:rgba(255,170,0,0.4);background:rgba(255,170,0,0.05);
+  animation:statusPulse 1.5s ease-in-out infinite;
+}
+@keyframes statusPulse{0%,100%{box-shadow:none;}50%{box-shadow:0 0 16px rgba(255,51,85,0.25);}}
+.s-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dot-green{background:var(--green);box-shadow:0 0 8px var(--green);}
+.dot-red{background:var(--red);box-shadow:0 0 8px var(--red);animation:blink 0.8s infinite;}
+.dot-amber{background:var(--amber);box-shadow:0 0 8px var(--amber);animation:blink 0.9s infinite;}
+.dot-dim{background:var(--muted);}
+.s-info{flex:1;}
+.s-name{font-weight:600;font-size:13px;}
+.s-desc{font-size:11px;color:var(--muted);margin-top:1px;font-family:'JetBrains Mono',monospace;}
+.s-badge{padding:3px 10px;border-radius:20px;font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;}
+.bg-ok{background:rgba(0,255,136,0.1);color:var(--green);border:1px solid rgba(0,255,136,0.25);}
+.bg-bad{background:rgba(255,51,85,0.1);color:var(--red);border:1px solid rgba(255,51,85,0.3);}
+.bg-warn{background:rgba(255,170,0,0.1);color:var(--amber);border:1px solid rgba(255,170,0,0.3);}
+.bg-dim{background:rgba(74,96,128,0.1);color:var(--muted);border:1px solid rgba(74,96,128,0.2);}
+
+/* ══ WEBCAM ══════════════════════════════════════════════ */
+.cam-wrap{position:relative;border-radius:10px;overflow:hidden;background:#030608;min-height:200px;}
+#webcam-feed{width:100%;display:block;border-radius:10px;}
+.cam-off{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;
+}
+.cam-off-icon{font-size:40px;opacity:0.2;}
+.cam-off-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+/* Scan line on webcam */
+.cam-scanline{
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  opacity:0;animation:camScan 3s linear infinite;
+}
+@keyframes camScan{0%{top:0;opacity:0;}10%{opacity:0.6;}90%{opacity:0.6;}100%{top:100%;opacity:0;}}
+
+/* ══ CHARTS ══════════════════════════════════════════════ */
+.chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px;}
+.chart-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:16px;}
+.chart-card{animation-delay:3.5s;}
+.chart-card canvas{max-height:130px;}
+
+/* ══ LOG ══════════════════════════════════════════════════ */
+.log-wrap{max-height:180px;overflow-y:auto;}
+.log-list{list-style:none;}
+.log-item{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 0;border-bottom:1px solid rgba(15,32,64,0.8);
+  font-size:12px;animation:logSlide 0.3s ease;
+}
+@keyframes logSlide{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);}}
+.log-time{font-family:'JetBrains Mono',monospace;color:var(--cyan);min-width:60px;font-size:10px;}
+.log-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.log-msg{flex:1;color:var(--muted);}
+.log-good .log-msg{color:var(--green);}
+.log-posture .log-msg{color:var(--red);}
+.log-phone .log-msg{color:var(--amber);}
+.log-environment .log-msg,.log-light .log-msg{color:var(--purple);}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+@media(max-width:1000px){
+  .main-grid{grid-template-columns:1fr 1fr;}
+  .stat-row{grid-template-columns:repeat(3,1fr);}
+  .chart-grid-3{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ PRELOADER ══════════════════════════════════════════ -->
+<div id="preloader">
+  <div class="pre-logo">
+    <!-- Animated SVG Logo -->
+    <svg class="pre-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="40" cy="40" r="36" stroke="url(#pg1)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <circle cx="40" cy="40" r="26" stroke="url(#pg2)" stroke-width="1" opacity="0.5"/>
+      <circle cx="40" cy="40" r="8" fill="url(#pg3)"/>
+      <!-- Brain nodes -->
+      <circle cx="40" cy="16" r="3" fill="#00eeff"/>
+      <circle cx="62" cy="28" r="3" fill="#00aaff"/>
+      <circle cx="62" cy="52" r="3" fill="#aa44ff"/>
+      <circle cx="40" cy="64" r="3" fill="#00eeff"/>
+      <circle cx="18" cy="52" r="3" fill="#00aaff"/>
+      <circle cx="18" cy="28" r="3" fill="#aa44ff"/>
+      <!-- Connecting lines -->
+      <line x1="40" y1="19" x2="40" y2="32" stroke="#00eeff" stroke-width="0.8" opacity="0.4"/>
+      <line x1="59" y1="30" x2="48" y2="36" stroke="#00aaff" stroke-width="0.8" opacity="0.4"/>
+      <line x1="59" y1="50" x2="48" y2="44" stroke="#aa44ff" stroke-width="0.8" opacity="0.4"/>
+      <line x1="40" y1="61" x2="40" y2="48" stroke="#00eeff" stroke-width="0.8" opacity="0.4"/>
+      <line x1="21" y1="50" x2="32" y2="44" stroke="#00aaff" stroke-width="0.8" opacity="0.4"/>
+      <line x1="21" y1="30" x2="32" y2="36" stroke="#aa44ff" stroke-width="0.8" opacity="0.4"/>
+      <defs>
+        <linearGradient id="pg1" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#00eeff"/>
+          <stop offset="100%" stop-color="#aa44ff"/>
+        </linearGradient>
+        <linearGradient id="pg2" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#00aaff"/>
+          <stop offset="100%" stop-color="#00eeff"/>
+        </linearGradient>
+        <radialGradient id="pg3" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#00eeff"/>
+          <stop offset="100%" stop-color="#00aaff"/>
+        </radialGradient>
+      </defs>
+    </svg>
+    <div class="pre-title">SMART STUDY DESK</div>
+    <div class="pre-sub">AI-POWERED LEARNING MONITOR v2.0</div>
+  </div>
+  <div class="pre-scan-wrap">
+    <div class="pre-scan-label">
+      <span>SYSTEM BOOT</span><span id="pre-pct">0%</span>
+    </div>
+    <div class="pre-bar-bg"><div class="pre-bar-fill"></div></div>
+    <div class="pre-steps">
+      <div class="pre-step">Initializing AI detection modules...</div>
+      <div class="pre-step">Loading sensor interfaces...</div>
+      <div class="pre-step">Connecting to Flask server...</div>
+      <div class="pre-step ok">Dashboard ready. Welcome back!</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FLASH OVERLAY ══════════════════════════════════════ -->
+<div class="flash-overlay" id="flash-overlay"></div>
+
+<!-- ══ TOAST CONTAINER ═══════════════════════════════════ -->
+<div id="toast-container"></div>
+
+<!-- ══ THREE.JS BG ════════════════════════════════════════ -->
+<canvas id="bg-canvas"></canvas>
+<div class="scanlines"></div>
+
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <svg class="logo-svg" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="22" stroke="url(#lg1)" stroke-width="1.5"/>
+        <circle cx="24" cy="24" r="10" stroke="url(#lg2)" stroke-width="1" opacity="0.6"/>
+        <circle cx="24" cy="24" r="4" fill="url(#lg3)"/>
+        <circle cx="24" cy="5"  r="2.5" fill="#00eeff"/>
+        <circle cx="40" cy="14" r="2.5" fill="#00aaff"/>
+        <circle cx="40" cy="34" r="2.5" fill="#aa44ff"/>
+        <circle cx="24" cy="43" r="2.5" fill="#00eeff"/>
+        <circle cx="8"  cy="34" r="2.5" fill="#00aaff"/>
+        <circle cx="8"  cy="14" r="2.5" fill="#aa44ff"/>
+        <line x1="24" y1="7.5" x2="24" y2="14" stroke="#00eeff" stroke-width="0.8" opacity="0.5"/>
+        <line x1="37.8" y1="15.5" x2="31" y2="19" stroke="#00aaff" stroke-width="0.8" opacity="0.5"/>
+        <line x1="37.8" y1="32.5" x2="31" y2="29" stroke="#aa44ff" stroke-width="0.8" opacity="0.5"/>
+        <line x1="24" y1="40.5" x2="24" y2="34" stroke="#00eeff" stroke-width="0.8" opacity="0.5"/>
+        <line x1="10.2" y1="32.5" x2="17" y2="29" stroke="#00aaff" stroke-width="0.8" opacity="0.5"/>
+        <line x1="10.2" y1="15.5" x2="17" y2="19" stroke="#aa44ff" stroke-width="0.8" opacity="0.5"/>
+        <defs>
+          <linearGradient id="lg1" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#00eeff"/><stop offset="100%" stop-color="#aa44ff"/>
+          </linearGradient>
+          <linearGradient id="lg2" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#00aaff"/><stop offset="100%" stop-color="#00eeff"/>
+          </linearGradient>
+          <radialGradient id="lg3" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#00eeff"/><stop offset="100%" stop-color="#00aaff"/>
+          </radialGradient>
+        </defs>
+      </svg>
+      <div class="logo-text">
+        <h1>SMART STUDY DESK</h1>
+        <p>AI · IOT · ENVIRONMENT MONITOR</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="session-box">
+        <div class="lbl">Session Time</div>
+        <div class="clk" id="session-clk">00:00:00</div>
+      </div>
+      <div class="live-pill"><span class="live-dot"></span>LIVE</div>
+    </div>
+  </header>
+
+  <!-- Controls -->
+  <div class="control-panel">
+    <div class="ctrl-section-label">⬡ SYSTEM CONTROLS</div>
+    <div class="ctrl-btn" id="btn-webcam" onclick="toggleWebcam()">
+      <div class="btn-left">
+        <span class="btn-icon">📷</span>
+        <div><div class="btn-name">Webcam</div><div class="btn-stat" id="webcam-stat">Offline</div></div>
+      </div>
+      <label class="toggle" onclick="event.stopPropagation()">
+        <input type="checkbox" id="tog-webcam" onchange="toggleWebcam()">
+        <span class="tslider"></span>
+      </label>
+    </div>
+    <div class="ctrl-btn" id="btn-detect" onclick="toggleDetection()">
+      <div class="btn-left">
+        <span class="btn-icon">🤖</span>
+        <div><div class="btn-name">AI Detection</div><div class="btn-stat" id="detect-stat">Webcam required</div></div>
+      </div>
+      <label class="toggle" onclick="event.stopPropagation()">
+        <input type="checkbox" id="tog-detect" onchange="toggleDetection()">
+        <span class="tslider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Stat row -->
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-lbl">Focus Score</div>
+      <div class="stat-val c-green" id="stat-focus">100</div>
+      <div class="stat-sub">out of 100</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Session Alerts</div>
+      <div class="stat-val c-red" id="stat-alerts">0</div>
+      <div class="stat-sub">this session</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Temperature</div>
+      <div class="stat-val c-amber" id="stat-temp">—</div>
+      <div class="stat-sub">°C</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Air Quality</div>
+      <div class="stat-val c-cyan" id="stat-gas">—</div>
+      <div class="stat-sub">gas index</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-lbl">Light Level</div>
+      <div class="stat-val c-orange" id="stat-light">—</div>
+      <div class="stat-sub" id="stat-light-lbl">reading...</div>
+    </div>
+  </div>
+
+  <!-- Alert Banner -->
+  <div id="alert-banner" class="good">
+    <div class="banner-icon" id="banner-icon">✅</div>
+    <div class="banner-content">
+      <div class="banner-title" id="banner-title">SYSTEM READY</div>
+      <div class="banner-sub" id="banner-sub">Start webcam to begin monitoring</div>
+      <div class="banner-bar"><div class="banner-bar-fill" id="banner-fill" style="width:100%"></div></div>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted)" id="banner-time">—</div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Gauges -->
+    <div class="card" style="animation-delay:3.4s">
+      <div class="card-lbl" style="color:var(--cyan)">Sensor Gauges</div>
+      <div class="gauges-grid">
+        <!-- Temp gauge -->
+        <div class="gauge-item">
+          <svg class="gauge-svg" width="70" height="42" viewBox="0 0 70 42">
+            <path class="gauge-track" d="M8,38 A30,30 0 0,1 62,38"/>
+            <path class="gauge-fill" id="g-temp" d="M8,38 A30,30 0 0,1 62,38" stroke="#ff3355" style="stroke-dasharray:94;stroke-dashoffset:94;"/>
+            <text class="gauge-val" id="gv-temp" x="35" y="30" style="font-size:11px;fill:#ff3355;">—</text>
+          </svg>
+          <div class="gauge-info">
+            <div class="gauge-name" style="color:#ff3355">Temperature</div>
+            <div class="gauge-reading" id="gr-temp">— °C</div>
+            <div class="gauge-status" id="gs-temp" style="color:var(--muted)">—</div>
+          </div>
+        </div>
+        <!-- Humidity gauge -->
+        <div class="gauge-item">
+          <svg class="gauge-svg" width="70" height="42" viewBox="0 0 70 42">
+            <path class="gauge-track" d="M8,38 A30,30 0 0,1 62,38"/>
+            <path class="gauge-fill" id="g-hum" d="M8,38 A30,30 0 0,1 62,38" stroke="#00aaff" style="stroke-dasharray:94;stroke-dashoffset:94;"/>
+            <text class="gauge-val" id="gv-hum" x="35" y="30" style="font-size:11px;fill:#00aaff;">—</text>
+          </svg>
+          <div class="gauge-info">
+            <div class="gauge-name" style="color:#00aaff">Humidity</div>
+            <div class="gauge-reading" id="gr-hum">— %</div>
+            <div class="gauge-status" id="gs-hum" style="color:var(--muted)">—</div>
+          </div>
+        </div>
+        <!-- Gas gauge -->
+        <div class="gauge-item">
+          <svg class="gauge-svg" width="70" height="42" viewBox="0 0 70 42">
+            <path class="gauge-track" d="M8,38 A30,30 0 0,1 62,38"/>
+            <path class="gauge-fill" id="g-gas" d="M8,38 A30,30 0 0,1 62,38" stroke="#00ff88" style="stroke-dasharray:94;stroke-dashoffset:94;"/>
+            <text class="gauge-val" id="gv-gas" x="35" y="30" style="font-size:11px;fill:#00ff88;">—</text>
+          </svg>
+          <div class="gauge-info">
+            <div class="gauge-name" style="color:#00ff88">Air Quality</div>
+            <div class="gauge-reading" id="gr-gas">— idx</div>
+            <div class="gauge-status" id="gs-gas" style="color:var(--muted)">—</div>
+          </div>
+        </div>
+        <!-- Light gauge -->
+        <div class="gauge-item">
+          <svg class="gauge-svg" width="70" height="42" viewBox="0 0 70 42">
+            <path class="gauge-track" d="M8,38 A30,30 0 0,1 62,38"/>
+            <path class="gauge-fill" id="g-light" d="M8,38 A30,30 0 0,1 62,38" stroke="#ff6600" style="stroke-dasharray:94;stroke-dashoffset:94;"/>
+            <text class="gauge-val" id="gv-light" x="35" y="30" style="font-size:11px;fill:#ff6600;">—</text>
+          </svg>
+          <div class="gauge-info">
+            <div class="gauge-name" style="color:#ff6600">Light Level</div>
+            <div class="gauge-reading" id="gr-light">— lux</div>
+            <div class="gauge-status" id="gs-light" style="color:var(--muted)">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Middle: Status + Webcam -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <!-- Detection status -->
+      <div class="card" style="animation-delay:3.45s">
+        <div class="card-lbl" style="color:var(--blue)">Detection Status</div>
+        <div class="status-list">
+          <div class="status-item" id="si-posture">
+            <span class="s-dot dot-dim" id="sd-posture"></span>
+            <div class="s-info"><div class="s-name">Posture Monitor</div><div class="s-desc" id="ss-posture">Waiting...</div></div>
+            <span class="s-badge bg-dim" id="sb-posture">Offline</span>
+          </div>
+          <div class="status-item" id="si-phone">
+            <span class="s-dot dot-dim" id="sd-phone"></span>
+            <div class="s-info"><div class="s-name">Phone Detector</div><div class="s-desc" id="ss-phone">Waiting...</div></div>
+            <span class="s-badge bg-dim" id="sb-phone">Offline</span>
+          </div>
+          <div class="status-item" id="si-env">
+            <span class="s-dot dot-green" id="sd-env"></span>
+            <div class="s-info"><div class="s-name">Environment</div><div class="s-desc" id="ss-env">Reading sensors...</div></div>
+            <span class="s-badge bg-ok" id="sb-env">Good</span>
+          </div>
+          <div class="status-item" id="si-light">
+            <span class="s-dot dot-green" id="sd-light"></span>
+            <div class="s-info"><div class="s-name">Light Monitor</div><div class="s-desc" id="ss-light">Reading LDR...</div></div>
+            <span class="s-badge bg-ok" id="sb-light">Good</span>
+          </div>
+        </div>
+      </div>
+      <!-- Webcam -->
+      <div class="card" style="animation-delay:3.5s;flex:1;">
+        <div class="card-lbl" style="color:var(--cyan)">Live Camera Feed</div>
+        <div class="cam-wrap" id="cam-wrap">
+          <div class="webcam-off" id="cam-off">
+            <div class="cam-off-icon">📷</div>
+            <div class="cam-off-text">Webcam is offline</div>
+            <div class="cam-off-text" style="opacity:0.5">Use toggle above to start</div>
+          </div>
+          <img id="webcam-feed" src="" style="display:none;width:100%;border-radius:10px;" alt="feed"/>
+          <div class="cam-scanline"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Log -->
+    <div class="card" style="animation-delay:3.55s">
+      <div class="card-lbl" style="color:var(--purple)">Alert History</div>
+      <div class="log-wrap">
+        <ul class="log-list" id="alert-log">
+          <li class="log-item log-good">
+            <span class="log-time">--:--:--</span>
+            <span class="log-dot" style="background:var(--cyan)"></span>
+            <span class="log-msg">Dashboard initialized</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts row 1: Temp + Humidity -->
+  <div class="chart-grid">
+    <div class="card chart-card" style="animation-delay:3.6s">
+      <div class="card-lbl" style="color:#ff3355">Temperature History</div>
+      <canvas id="tempChart"></canvas>
+    </div>
+    <div class="card chart-card" style="animation-delay:3.65s">
+      <div class="card-lbl" style="color:#00aaff">Humidity History</div>
+      <canvas id="humChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Charts row 2: Gas + Light -->
+  <div class="chart-grid">
+    <div class="card chart-card" style="animation-delay:3.7s">
+      <div class="card-lbl" style="color:#00ff88">Air Quality History</div>
+      <canvas id="gasChart"></canvas>
+    </div>
+    <div class="card chart-card" style="animation-delay:3.75s">
+      <div class="card-lbl" style="color:#ff6600">Light Level History</div>
+      <canvas id="lightChart"></canvas>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+// ══ PRELOADER ════════════════════════════════════════════
+let pct = 0;
+const pctEl = document.getElementById('pre-pct');
+const pctInterval = setInterval(()=>{
+  pct = Math.min(100, pct + Math.random()*4+1);
+  if(pctEl) pctEl.textContent = Math.floor(pct)+'%';
+  if(pct>=100) clearInterval(pctInterval);
+},50);
+setTimeout(()=>{
+  document.getElementById('preloader').classList.add('hide');
+  setTimeout(()=>{ const p=document.getElementById('preloader'); if(p) p.style.display='none'; },900);
+}, 2800);
+
+// ══ THREE.JS NEURAL BACKGROUND ═══════════════════════════
+(function(){
+  const canvas=document.getElementById('bg-canvas');
+  const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  const scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,1000);
+  camera.position.z=90;
+  const N=100, pos=[], vel=[];
+  for(let i=0;i<N;i++){
+    pos.push((Math.random()-.5)*180,(Math.random()-.5)*110,(Math.random()-.5)*60);
+    vel.push((Math.random()-.5)*.035,(Math.random()-.5)*.035,(Math.random()-.5)*.015);
+  }
+  const geo=new THREE.BufferGeometry();
+  const pa=new Float32Array(pos);
+  geo.setAttribute('position',new THREE.BufferAttribute(pa,3));
+  const ptMat=new THREE.PointsMaterial({color:0x00aaff,size:0.7,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthWrite:false});
+  scene.add(new THREE.Points(geo,ptMat));
+  const lMat=new THREE.LineBasicMaterial({color:0x00aaff,transparent:true,opacity:0.08,blending:THREE.AdditiveBlending,depthWrite:false});
+  let lineObj=null;
+  function buildLines(){
+    const lp=[],p=pa,D=30;
+    for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){
+      const dx=p[i*3]-p[j*3],dy=p[i*3+1]-p[j*3+1],dz=p[i*3+2]-p[j*3+2];
+      if(dx*dx+dy*dy+dz*dz<D*D) lp.push(p[i*3],p[i*3+1],p[i*3+2],p[j*3],p[j*3+1],p[j*3+2]);
+    }
+    if(lineObj) scene.remove(lineObj);
+    const lg=new THREE.BufferGeometry();
+    lg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(lp),3));
+    lineObj=new THREE.LineSegments(lg,lMat);
+    scene.add(lineObj);
+  }
+  let fc=0;
+  (function animate(){
+    requestAnimationFrame(animate);
+    for(let i=0;i<N;i++){
+      pa[i*3]+=vel[i*3]; pa[i*3+1]+=vel[i*3+1]; pa[i*3+2]+=vel[i*3+2];
+      if(Math.abs(pa[i*3])>90) vel[i*3]*=-1;
+      if(Math.abs(pa[i*3+1])>55) vel[i*3+1]*=-1;
+      if(Math.abs(pa[i*3+2])>30) vel[i*3+2]*=-1;
+    }
+    geo.attributes.position.needsUpdate=true;
+    if(++fc%4===0) buildLines();
+    renderer.render(scene,camera);
+  })();
+  buildLines();
+  window.addEventListener('resize',()=>{
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+  window.setNetColor=function(hex){
+    ptMat.color.setHex(hex);
+    lMat.color.setHex(hex);
+  };
+})();
+
+// ══ TOAST ALERT SYSTEM ═══════════════════════════════════
+const toastCfg={
+  good:     {icon:'✅',cls:'toast-good',    title:'ALL GOOD'},
+  posture:  {icon:'⚠️',cls:'toast-posture', title:'POSTURE ALERT'},
+  phone:    {icon:'📵',cls:'toast-phone',   title:'DISTRACTION DETECTED'},
+  environment:{icon:'💨',cls:'toast-environment',title:'ENVIRONMENT ALERT'},
+  light:    {icon:'🌑',cls:'toast-light',   title:'LOW LIGHT ALERT'},
+};
+let lastToastType='';
+function showToast(type, msg){
+  if(type===lastToastType && type==='good') return;
+  lastToastType=type;
+  const cfg=toastCfg[type]||toastCfg.good;
+  const tc=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className=`toast ${cfg.cls}`;
+  t.style.position='relative';
+  t.innerHTML=`
+    <div class="toast-icon">${cfg.icon}</div>
+    <div class="toast-body">
+      <div class="toast-title">${cfg.title}</div>
+      <div class="toast-msg">${msg}</div>
+    </div>
+    <div class="toast-close" onclick="this.parentElement.remove()">✕</div>
+    <div class="toast-progress"></div>`;
+  tc.appendChild(t);
+  requestAnimationFrame(()=>{ requestAnimationFrame(()=>t.classList.add('show')); });
+  // Screen flash on non-good alerts
+  if(type!=='good'){
+    const fl=document.getElementById('flash-overlay');
+    const colors={posture:'rgba(255,51,85,0.15)',phone:'rgba(255,170,0,0.1)',environment:'rgba(170,68,255,0.1)',light:'rgba(255,102,0,0.1)'};
+    fl.style.background=colors[type]||'transparent';
+    fl.classList.add('flash');
+    setTimeout(()=>fl.classList.remove('flash'),500);
+  }
+  setTimeout(()=>{
+    t.classList.add('hide');
+    setTimeout(()=>{ if(t.parentNode) t.remove(); },500);
+  },4000);
+}
+
+// ══ CHARTS ════════════════════════════════════════════════
+function mkChart(id,label,color){
+  const ctx=document.getElementById(id).getContext('2d');
+  return new Chart(ctx,{
+    type:'line',
+    data:{labels:[],datasets:[{label,data:[],borderColor:color,
+      backgroundColor:color+'15',borderWidth:1.5,pointRadius:2,
+      pointBackgroundColor:color,fill:true,tension:0.4}]},
+    options:{responsive:true,animation:{duration:400},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#2a4060',font:{size:9},maxTicksLimit:5},grid:{color:'rgba(15,32,64,0.8)'}},
+        y:{ticks:{color:'#2a4060',font:{size:9}},grid:{color:'rgba(15,32,64,0.8)'}}
+      }}
+  });
+}
+const tempChart  = mkChart('tempChart',  'Temp','#ff3355');
+const humChart   = mkChart('humChart',   'Hum', '#00aaff');
+const gasChart   = mkChart('gasChart',   'Gas', '#00ff88');
+const lightChart = mkChart('lightChart', 'Light','#ff6600');
+
+function updChart(chart,labels,vals){
+  chart.data.labels=labels;
+  chart.data.datasets[0].data=vals;
+  chart.update('none');
+}
+
+// ══ GAUGE ═════════════════════════════════════════════════
+function setGauge(id,valId,val,min,max){
+  const pct=Math.min(1,Math.max(0,(val-min)/(max-min)));
+  const el=document.getElementById(id);
+  if(el) el.style.strokeDashoffset=94-(pct*94);
+  const ve=document.getElementById(valId);
+  if(ve) ve.textContent=typeof val==='number'?val.toFixed(1):val;
+}
+
+// ══ ANIMATED NUMBER ═══════════════════════════════════════
+function animNum(el,to,dec=0){
+  if(!el) return;
+  const from=parseFloat(el.textContent)||0;
+  const dur=700,start=performance.now();
+  (function step(now){
+    const t=Math.min((now-start)/dur,1);
+    const ease=1-Math.pow(1-t,3);
+    el.textContent=dec?(from+(to-from)*ease).toFixed(dec):Math.round(from+(to-from)*ease);
+    if(t<1) requestAnimationFrame(step);
+  })(performance.now());
+}
+
+// ══ SESSION TIMER ══════════════════════════════════════════
+const t0=Date.now();
+setInterval(()=>{
+  const s=Math.floor((Date.now()-t0)/1000);
+  const h=String(Math.floor(s/3600)).padStart(2,'0');
+  const m=String(Math.floor(s%3600/60)).padStart(2,'0');
+  const sc=String(s%60).padStart(2,'0');
+  document.getElementById('session-clk').textContent=`${h}:${m}:${sc}`;
+},1000);
+
+// ══ CONTROLS ══════════════════════════════════════════════
+let webcamOn=false, detectOn=false;
+
+async function toggleWebcam(){
+  const r=await fetch('/control',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:webcamOn?'stop_webcam':'start_webcam'})});
+  const d=await r.json();
+  webcamOn=d.webcam_on; detectOn=d.detection_on;
+  syncControls();
+}
+async function toggleDetection(){
+  if(!webcamOn&&!detectOn){showToast('good','Please start the webcam first!');return;}
+  const r=await fetch('/control',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:detectOn?'stop_detection':'start_detection'})});
+  const d=await r.json();
+  webcamOn=d.webcam_on; detectOn=d.detection_on;
+  syncControls();
+}
+function syncControls(){
+  document.getElementById('tog-webcam').checked=webcamOn;
+  document.getElementById('tog-detect').checked=detectOn;
+  document.getElementById('webcam-stat').textContent=webcamOn?'Online':'Offline';
+  document.getElementById('detect-stat').textContent=detectOn?'Active':webcamOn?'Click to activate':'Webcam required';
+  document.getElementById('btn-webcam').classList.toggle('active',webcamOn);
+  document.getElementById('btn-detect').classList.toggle('active',detectOn);
+  const feed=document.getElementById('webcam-feed');
+  const off=document.getElementById('cam-off');
+  if(webcamOn){feed.src='/video_feed';feed.style.display='block';off.style.display='none';}
+  else{feed.src='';feed.style.display='none';off.style.display='flex';}
+}
+
+// ══ LOG ════════════════════════════════════════════════════
+let lastLog='';
+const dotColors={good:'#00ff88',posture:'#ff3355',phone:'#ffaa00',environment:'#aa44ff',light:'#ff6600'};
+function addLog(type,msg){
+  if(msg===lastLog) return; lastLog=msg;
+  const now=new Date().toLocaleTimeString();
+  const li=document.createElement('li');
+  li.className=`log-item log-${type}`;
+  li.innerHTML=`<span class="log-time">${now}</span>
+    <span class="log-dot" style="background:${dotColors[type]||'#4a6080'};box-shadow:0 0 6px ${dotColors[type]||'#4a6080'}"></span>
+    <span class="log-msg">${msg}</span>`;
+  const log=document.getElementById('alert-log');
+  log.insertBefore(li,log.firstChild);
+  while(log.children.length>60) log.removeChild(log.lastChild);
+}
+
+// ══ MAIN FETCH ════════════════════════════════════════════
+let prevAlertType='';
+async function fetchData(){
+  try{
+    const data=await (await fetch('/data')).json();
+
+    // Sync controls
+    if(data.webcam_on!==webcamOn||data.detection_on!==detectOn){
+      webcamOn=data.webcam_on; detectOn=data.detection_on; syncControls();
+    }
+
+    // Stat cards
+    animNum(document.getElementById('stat-focus'),  Math.round(data.focus_score));
+    animNum(document.getElementById('stat-alerts'), data.session_alerts);
+    animNum(document.getElementById('stat-temp'),   data.temperature, 1);
+    animNum(document.getElementById('stat-gas'),    data.gas);
+    animNum(document.getElementById('stat-light'),  data.light_ao||0);
+    const lsEl=document.getElementById('stat-light-lbl');
+    if(lsEl) lsEl.textContent=data.light_status||'—';
+
+    // Gauges
+    setGauge('g-temp','gv-temp', data.temperature,  0,  50);
+    setGauge('g-hum', 'gv-hum',  data.humidity,     0, 100);
+    setGauge('g-gas', 'gv-gas',  data.gas,           0, 800);
+    setGauge('g-light','gv-light',data.light_ao||0,  0,1023);
+
+    // Gauge readings
+    document.getElementById('gr-temp').textContent  = data.temperature.toFixed(1)+' °C';
+    document.getElementById('gr-hum').textContent   = data.humidity.toFixed(1)+' %';
+    document.getElementById('gr-gas').textContent   = data.gas+' idx';
+    document.getElementById('gr-light').textContent = (data.light_ao||0)+' lux';
+
+    // Gauge status labels
+    document.getElementById('gs-temp').textContent  = data.temperature>35?'⚠ Too hot':data.temperature<15?'❄ Cold':'✓ Good';
+    document.getElementById('gs-hum').textContent   = data.humidity>70?'⚠ Humid':data.humidity<20?'⚠ Dry':'✓ Good';
+    document.getElementById('gs-gas').textContent   = data.gas>400?'⚠ Poor':data.gas>200?'~ OK':'✓ Clean';
+    document.getElementById('gs-light').textContent = (data.light_ao||0)>600?'⚠ Dark':(data.light_ao||0)<100?'✓ Bright':'✓ Good';
+
+    // Banner
+    const banner=document.getElementById('alert-banner');
+    const icons={good:'✅',posture:'⚠️',phone:'📵',environment:'💨',light:'🌑'};
+    const titles={good:'ALL GOOD',posture:'POSTURE ALERT',phone:'DISTRACTION DETECTED',environment:'ENVIRONMENT ALERT',light:'LOW LIGHT ALERT'};
+    banner.className=data.alert_type;
+    document.getElementById('banner-icon').textContent=icons[data.alert_type]||'✅';
+    document.getElementById('banner-title').textContent=titles[data.alert_type]||'ALL GOOD';
+    document.getElementById('banner-sub').textContent=data.alert;
+    document.getElementById('banner-time').textContent=data.last_updated||'—';
+    const fillPct={good:100,posture:75,phone:60,environment:80,light:65};
+    document.getElementById('banner-fill').style.width=(fillPct[data.alert_type]||100)+'%';
+
+    // Three.js color + toast on alert change
+    const netColors={good:0x00aaff,posture:0xff3355,phone:0xffaa00,environment:0xaa44ff,light:0xff6600};
+    if(window.setNetColor) window.setNetColor(netColors[data.alert_type]||0x00aaff);
+    if(data.alert_type!==prevAlertType){
+      showToast(data.alert_type, data.alert);
+      prevAlertType=data.alert_type;
+    }
+
+    // Status items
+    function setStatus(itemId,dotId,descId,badgeId,state,desc,badgeText){
+      const stateMap={ok:'',bad:'alert-bad',warn:'alert-warn'};
+      const dotMap={ok:'dot-green',bad:'dot-red',warn:'dot-amber',off:'dot-dim'};
+      const badgeMap={ok:'bg-ok',bad:'bg-bad',warn:'bg-warn',off:'bg-dim'};
+      document.getElementById(itemId).className='status-item '+(stateMap[state]||'');
+      document.getElementById(dotId).className='s-dot '+(dotMap[state]||'dot-dim');
+      document.getElementById(descId).textContent=desc;
+      const bEl=document.getElementById(badgeId);
+      bEl.className='s-badge '+(badgeMap[state]||'bg-dim');
+      bEl.textContent=badgeText;
+    }
+
+    if(!data.detection_on){
+      setStatus('si-posture','sd-posture','ss-posture','sb-posture','off','Detection offline','Offline');
+      setStatus('si-phone','sd-phone','ss-phone','sb-phone','off','Detection offline','Offline');
+    } else if(data.posture==='Bad'){
+      setStatus('si-posture','sd-posture','ss-posture','sb-posture','bad','Sit up straight!','Alert!');
+    } else {
+      setStatus('si-posture','sd-posture','ss-posture','sb-posture','ok','Posture looks good','Good ✓');
+    }
+
+    if(data.detection_on){
+      if(data.phone==='Detected!'){
+        setStatus('si-phone','sd-phone','ss-phone','sb-phone','warn','Phone in view!','Detected');
+      } else {
+        setStatus('si-phone','sd-phone','ss-phone','sb-phone','ok','No phone detected','Clear ✓');
+      }
+    }
+
+    const envBad=data.temperature>35||data.humidity>70||data.gas>400;
+    if(envBad){
+      const msg=data.gas>400?'Poor air quality':data.temperature>35?'Too hot':'High humidity';
+      setStatus('si-env','sd-env','ss-env','sb-env','bad',msg,'Alert!');
+    } else {
+      setStatus('si-env','sd-env','ss-env','sb-env','ok',`${data.temperature.toFixed(1)}°C · ${data.humidity.toFixed(0)}% · Gas:${data.gas}`,'Good ✓');
+    }
+
+    const lightBad=(data.light_ao||0)>600;
+    if(lightBad){
+      setStatus('si-light','sd-light','ss-light','sb-light','bad','Room too dark!','Alert!');
+    } else {
+      setStatus('si-light','sd-light','ss-light','sb-light','ok',`${data.light_status||'Good'} · ${data.light_ao||0} lux`,'Good ✓');
+    }
+
+    // Charts — ALL FOUR including light
+    if(data.time_history&&data.time_history.length){
+      updChart(tempChart,  data.time_history, data.temp_history);
+      updChart(humChart,   data.time_history, data.hum_history);
+      updChart(gasChart,   data.time_history, data.gas_history);
+      // Fix: light_history populated properly
+      if(data.light_history&&data.light_history.length){
+        updChart(lightChart, data.time_history, data.light_history);
+      }
+    }
+
+    // Log
+    addLog(data.alert_type, data.alert);
+
+  }catch(e){console.log('Fetch error',e);}
+}
+
+fetchData();
+setInterval(fetchData,2000);
+</script>
+</body>
+</html>
