@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NEURODESK — AI Study Monitor</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23040c18' stroke='%2300eeff' stroke-width='2'/%3E%3Ccircle cx='32' cy='32' r='8' fill='%2300aaff'/%3E%3Ccircle cx='32' cy='8' r='4' fill='%2300eeff'/%3E%3Ccircle cx='54' cy='20' r='4' fill='%23aa44ff'/%3E%3Ccircle cx='54' cy='44' r='4' fill='%2300aaff'/%3E%3Ccircle cx='32' cy='56' r='4' fill='%2300eeff'/%3E%3Ccircle cx='10' cy='44' r='4' fill='%23aa44ff'/%3E%3Ccircle cx='10' cy='20' r='4' fill='%2300aaff'/%3E%3Cline x1='32' y1='12' x2='32' y2='24' stroke='%2300eeff' stroke-width='1.5'/%3E%3Cline x1='51' y1='22' x2='40' y2='28' stroke='%23aa44ff' stroke-width='1.5'/%3E%3Cline x1='51' y1='42' x2='40' y2='36' stroke='%2300aaff' stroke-width='1.5'/%3E%3Cline x1='32' y1='52' x2='32' y2='40' stroke='%2300eeff' stroke-width='1.5'/%3E%3Cline x1='13' y1='42' x2='24' y2='36' stroke='%23aa44ff' stroke-width='1.5'/%3E%3Cline x1='13' y1='22' x2='24' y2='28' stroke='%2300aaff' stroke-width='1.5'/%3E%3C/svg%3E"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#03070f;--bg2:#06101e;--card:#080e1c;--card2:#0c1428;
+  --b1:#0d2040;--b2:#1a3560;--b3:#2a4a80;
+  --tx:#b8cce0;--muted:#3a5878;--dim:#1e3050;
+  --cyan:#00eeff;--blue:#0088ff;--green:#00ff88;
+  --red:#ff2244;--amber:#ffaa00;--purple:#bb44ff;--orange:#ff5500;
+  --pink:#ff44aa;
+  --cg:rgba(0,238,255,0.15);--bg-glow:rgba(0,136,255,0.1);
+}
+html,body{height:100%;overflow-x:hidden;}
+body{background:var(--bg);color:var(--tx);font-family:'Rajdhani',sans-serif;font-size:15px;}
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px;}
+
+/* ══ PRELOADER ══════════════════════════════════════ */
+#preloader{position:fixed;inset:0;z-index:9999;background:#03070f;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;transition:opacity .8s ease,transform .8s ease;}
+#preloader.out{opacity:0;transform:scale(1.04);pointer-events:none;}
+.pre-neural{position:relative;width:120px;height:120px;animation:preRot 6s linear infinite;}
+@keyframes preRot{to{transform:rotate(360deg);}}
+.pre-title{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;letter-spacing:6px;background:linear-gradient(135deg,var(--cyan),var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:titleGlow 2s ease-in-out infinite alternate;}
+@keyframes titleGlow{from{filter:drop-shadow(0 0 8px rgba(0,238,255,.3));}to{filter:drop-shadow(0 0 24px rgba(0,238,255,.8));}}
+.pre-tagline{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:4px;}
+.pre-bar-wrap{width:360px;}
+.pre-bar-top{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);margin-bottom:6px;}
+.pre-bar-bg{height:3px;background:var(--b1);border-radius:3px;overflow:hidden;}
+.pre-bar{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));box-shadow:0 0 12px var(--cyan);border-radius:3px;animation:preBar 2.6s cubic-bezier(.4,0,.2,1) forwards .2s;}
+@keyframes preBar{to{width:100%;}}
+.pre-log{display:flex;flex-direction:column;gap:4px;margin-top:4px;}
+.pre-log-line{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);display:flex;gap:8px;opacity:0;animation:logIn .3s ease both;}
+.pre-log-line.ok{color:var(--green);}
+.pre-log-line:nth-child(1){animation-delay:.3s;}
+.pre-log-line:nth-child(2){animation-delay:.8s;}
+.pre-log-line:nth-child(3){animation-delay:1.3s;}
+.pre-log-line:nth-child(4){animation-delay:1.8s;}
+.pre-log-line:nth-child(5){animation-delay:2.2s;}
+@keyframes logIn{to{opacity:1;}}
+
+/* ══ BG + OVERLAYS ══════════════════════════════════ */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.scanlines{position:fixed;inset:0;z-index:1;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);}
+#flash{position:fixed;inset:0;z-index:8500;pointer-events:none;opacity:0;}
+#flash.go{animation:flashAnim .6s ease;}
+@keyframes flashAnim{0%{opacity:0;}15%{opacity:1;}100%{opacity:0;}}
+
+/* ══ TOAST ══════════════════════════════════════════ */
+#toasts{position:fixed;top:20px;right:20px;z-index:9000;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{min-width:300px;max-width:380px;padding:14px 18px;border-radius:14px;border:1px solid;backdrop-filter:blur(20px);display:flex;align-items:flex-start;gap:12px;pointer-events:all;transform:translateX(110%);opacity:0;transition:transform .5s cubic-bezier(.34,1.56,.64,1),opacity .4s;position:relative;overflow:hidden;}
+.toast.in{transform:translateX(0);opacity:1;}
+.toast.out{transform:translateX(110%);opacity:0;transition:transform .35s ease,opacity .35s;}
+.t-good{background:rgba(0,255,136,.06);border-color:rgba(0,255,136,.3);color:var(--green);}
+.t-posture{background:rgba(255,34,68,.07);border-color:rgba(255,34,68,.4);color:var(--red);}
+.t-phone{background:rgba(255,170,0,.06);border-color:rgba(255,170,0,.35);color:var(--amber);}
+.t-environment{background:rgba(187,68,255,.06);border-color:rgba(187,68,255,.35);color:var(--purple);}
+.t-light{background:rgba(255,85,0,.06);border-color:rgba(255,85,0,.35);color:var(--orange);}
+.t-info{background:rgba(0,136,255,.06);border-color:rgba(0,136,255,.3);color:var(--blue);}
+.t-icon{font-size:24px;flex-shrink:0;animation:tPop .5s cubic-bezier(.34,1.56,.64,1);}
+@keyframes tPop{from{transform:scale(0) rotate(-20deg);}to{transform:scale(1) rotate(0);}}
+.t-body .t-title{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:1px;}
+.t-body .t-msg{font-size:12px;opacity:.75;margin-top:2px;font-family:'Rajdhani',sans-serif;}
+.t-close{margin-left:auto;opacity:.5;cursor:pointer;font-size:14px;flex-shrink:0;}
+.t-close:hover{opacity:1;}
+.t-prog{position:absolute;bottom:0;left:0;height:2px;background:currentColor;opacity:.4;animation:tProg 4s linear forwards;}
+@keyframes tProg{from{width:100%;}to{width:0;}}
+
+/* ══ LAYOUT ══════════════════════════════════════════ */
+.page{position:relative;z-index:2;padding:16px;max-width:1500px;margin:0 auto;}
+
+/* ══ HEADER ══════════════════════════════════════════ */
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;margin-bottom:14px;background:rgba(6,10,20,.95);border:1px solid var(--b2);border-radius:16px;backdrop-filter:blur(24px);box-shadow:0 0 40px rgba(0,136,255,.06),inset 0 1px 0 rgba(0,238,255,.06);animation:slideDown .5s ease both 2.9s;}
+@keyframes slideDown{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:translateY(0);}}
+.hlogo{display:flex;align-items:center;gap:14px;}
+.logo-mark{width:44px;height:44px;flex-shrink:0;animation:logoPulse 3s ease-in-out infinite;filter:drop-shadow(0 0 10px var(--cyan));}
+@keyframes logoPulse{0%,100%{filter:drop-shadow(0 0 8px var(--cyan));}50%{filter:drop-shadow(0 0 22px var(--blue)) drop-shadow(0 0 40px rgba(0,136,255,.3));}}
+.hlogo-text h1{font-family:'Orbitron',monospace;font-size:18px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,var(--cyan),var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hlogo-text p{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:1px;}
+.hright{display:flex;align-items:center;gap:20px;}
+.h-clock{text-align:right;}
+.h-clock .lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;}
+.h-clock .val{font-family:'Orbitron',monospace;font-size:22px;font-weight:700;color:var(--cyan);letter-spacing:2px;text-shadow:0 0 20px rgba(0,238,255,.4);}
+.live-badge{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.25);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);}
+.ldot{width:6px;height:6px;background:var(--green);border-radius:50%;box-shadow:0 0 6px var(--green);animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+
+/* ══ PDF BUTTON ══════════════════════════════════════ */
+#pdf-btn{position:fixed;bottom:28px;right:28px;z-index:500;padding:12px 20px;border-radius:14px;background:linear-gradient(135deg,var(--blue),var(--purple));border:none;color:#fff;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer;box-shadow:0 4px 24px rgba(0,136,255,.4);transition:all .3s;display:flex;align-items:center;gap:8px;}
+#pdf-btn:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,136,255,.5);}
+
+/* ══ CONTROLS ════════════════════════════════════════ */
+.ctrl-row{display:grid;grid-template-columns:auto 1fr 1fr;align-items:center;gap:12px;padding:14px 20px;margin-bottom:14px;background:rgba(6,10,20,.95);border:1px solid var(--b2);border-radius:14px;backdrop-filter:blur(20px);animation:fadeUp .5s ease both 3s;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.ctrl-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:3px;white-space:nowrap;}
+.cbtn{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-radius:10px;border:1px solid var(--b1);background:rgba(255,255,255,.015);cursor:pointer;transition:all .3s;}
+.cbtn:hover,.cbtn.on{border-color:var(--blue);background:rgba(0,136,255,.06);box-shadow:0 0 16px rgba(0,136,255,.08);}
+.cbtn-l{display:flex;align-items:center;gap:10px;}
+.cbtn-icon{font-size:16px;}
+.cbtn-name{font-weight:600;font-size:13px;}
+.cbtn-stat{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
+.tog{position:relative;width:42px;height:22px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tslide{position:absolute;inset:0;border-radius:22px;background:var(--b1);transition:.3s;cursor:pointer;}
+.tslide:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;border-radius:50%;background:var(--muted);transition:.3s;}
+input:checked+.tslide{background:linear-gradient(135deg,var(--blue),var(--cyan));box-shadow:0 0 12px rgba(0,136,255,.4);}
+input:checked+.tslide:before{transform:translateX(20px);background:#fff;}
+
+/* ══ STAT ROW ════════════════════════════════════════ */
+.stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;}
+.sc{padding:14px 16px;border-radius:12px;background:rgba(6,10,20,.95);border:1px solid var(--b1);backdrop-filter:blur(20px);transition:transform .3s,box-shadow .3s;animation:fadeUp .5s ease both;position:relative;overflow:hidden;}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--b3),transparent);}
+.sc:nth-child(1){animation-delay:3.05s;} .sc:nth-child(2){animation-delay:3.1s;} .sc:nth-child(3){animation-delay:3.15s;} .sc:nth-child(4){animation-delay:3.2s;} .sc:nth-child(5){animation-delay:3.25s;} .sc:nth-child(6){animation-delay:3.3s;}
+.sc:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,0,0,.3);}
+.sc-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.sc-val{font-family:'Orbitron',monospace;font-size:24px;font-weight:700;line-height:1;}
+.sc-sub{font-size:11px;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace;}
+.c-cy{color:var(--cyan);text-shadow:0 0 14px rgba(0,238,255,.4);}
+.c-gr{color:var(--green);text-shadow:0 0 14px rgba(0,255,136,.4);}
+.c-re{color:var(--red);text-shadow:0 0 14px rgba(255,34,68,.4);}
+.c-am{color:var(--amber);text-shadow:0 0 14px rgba(255,170,0,.4);}
+.c-pu{color:var(--purple);text-shadow:0 0 14px rgba(187,68,255,.4);}
+.c-or{color:var(--orange);}
+
+/* ══ BANNER ══════════════════════════════════════════ */
+#banner{padding:14px 22px;border-radius:14px;margin-bottom:14px;display:flex;align-items:center;gap:16px;border:1px solid transparent;backdrop-filter:blur(20px);transition:all .5s;animation:fadeUp .5s ease both 3.35s;position:relative;overflow:hidden;}
+#banner::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.015),transparent);transform:translateX(-100%);animation:shimmer 3s ease infinite;}
+@keyframes shimmer{to{transform:translateX(100%);}}
+.bn-good{background:rgba(0,255,136,.04);border-color:rgba(0,255,136,.2);color:var(--green);}
+.bn-posture{background:rgba(255,34,68,.06);border-color:rgba(255,34,68,.35);color:var(--red);animation:bnShake .4s ease 3;}
+.bn-phone{background:rgba(255,170,0,.05);border-color:rgba(255,170,0,.35);color:var(--amber);animation:bnShake .4s ease 3;}
+.bn-environment{background:rgba(187,68,255,.05);border-color:rgba(187,68,255,.3);color:var(--purple);}
+.bn-light{background:rgba(255,85,0,.05);border-color:rgba(255,85,0,.3);color:var(--orange);}
+@keyframes bnShake{0%,100%{transform:translateX(0);}30%{transform:translateX(-5px);}70%{transform:translateX(5px);}}
+.bn-icon{font-size:28px;filter:drop-shadow(0 0 6px currentColor);}
+.bn-body{flex:1;}
+.bn-title{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:1.5px;}
+.bn-sub{font-size:12px;opacity:.6;margin-top:2px;font-family:'JetBrains Mono',monospace;}
+.bn-bar{height:2px;background:rgba(255,255,255,.05);border-radius:2px;margin-top:8px;overflow:hidden;}
+.bn-fill{height:100%;border-radius:2px;background:currentColor;box-shadow:0 0 8px currentColor;transition:width .8s cubic-bezier(.4,0,.2,1);}
+.bn-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);}
+
+/* ══ CARD ════════════════════════════════════════════ */
+.card{background:rgba(6,10,20,.95);border:1px solid var(--b1);border-radius:16px;padding:18px;backdrop-filter:blur(20px);transition:transform .3s,box-shadow .3s;animation:fadeUp .5s ease both;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--b2),transparent);}
+.card:hover{transform:translateY(-3px);box-shadow:0 12px 36px rgba(0,0,0,.3);}
+.card-hdr{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+.card-hdr::before{content:'';width:14px;height:1px;background:currentColor;opacity:.4;}
+
+/* ══ MAIN GRID ═══════════════════════════════════════ */
+.main-grid{display:grid;grid-template-columns:260px 1fr 300px;gap:14px;margin-bottom:14px;}
+
+/* ══ GAUGES ══════════════════════════════════════════ */
+.gauge-list{display:flex;flex-direction:column;gap:12px;}
+.gi{display:flex;align-items:center;gap:12px;}
+.gi svg{flex-shrink:0;overflow:visible;}
+.gt{fill:none;stroke:var(--b1);stroke-width:7;stroke-linecap:round;}
+.gf{fill:none;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1),stroke .5s;}
+.gv{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;text-anchor:middle;dominant-baseline:central;}
+.gi-info{flex:1;}
+.gi-name{font-weight:600;font-size:12px;}
+.gi-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
+.gi-status{font-size:10px;margin-top:3px;font-family:'JetBrains Mono',monospace;}
+
+/* ══ STATUS LIST ══════════════════════════════════════ */
+.slist{display:flex;flex-direction:column;gap:8px;}
+.si{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--b1);background:rgba(255,255,255,.01);transition:all .4s;}
+.si.bad{border-color:rgba(255,34,68,.4);background:rgba(255,34,68,.04);animation:siPulse 1.5s infinite;}
+.si.warn{border-color:rgba(255,170,0,.4);background:rgba(255,170,0,.04);animation:siPulse 1.5s infinite;}
+@keyframes siPulse{0%,100%{box-shadow:none;}50%{box-shadow:0 0 14px rgba(255,34,68,.2);}}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dg{background:var(--green);box-shadow:0 0 6px var(--green);}
+.dr{background:var(--red);box-shadow:0 0 6px var(--red);animation:blink .8s infinite;}
+.da{background:var(--amber);box-shadow:0 0 6px var(--amber);animation:blink .9s infinite;}
+.dd{background:var(--muted);}
+.si-info{flex:1;}
+.si-name{font-weight:600;font-size:12px;}
+.si-desc{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:1px;}
+.sbadge{padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;}
+.bok{background:rgba(0,255,136,.08);color:var(--green);border:1px solid rgba(0,255,136,.2);}
+.bbad{background:rgba(255,34,68,.08);color:var(--red);border:1px solid rgba(255,34,68,.25);}
+.bwarn{background:rgba(255,170,0,.08);color:var(--amber);border:1px solid rgba(255,170,0,.25);}
+.bdim{background:rgba(58,88,120,.08);color:var(--muted);border:1px solid rgba(58,88,120,.2);}
+
+/* ── Webcam ── */
+.cam-wrap{position:relative;border-radius:10px;overflow:hidden;background:#020508;min-height:160px;margin-top:10px;}
+#wcam{width:100%;display:block;border-radius:10px;}
+.cam-off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+.cam-off-ico{font-size:36px;opacity:.2;}
+.cam-off-txt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);}
+.cam-scan{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:0;animation:camScan 4s linear infinite;}
+@keyframes camScan{0%{top:0;opacity:0;}10%{opacity:.7;}90%{opacity:.7;}100%{top:100%;opacity:0;}}
+
+/* ══ LOG ══════════════════════════════════════════════ */
+.log-scroll{max-height:340px;overflow-y:auto;}
+.log-list{list-style:none;}
+.log-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(13,32,64,.8);font-size:11px;animation:logSlide .3s ease;}
+@keyframes logSlide{from{opacity:0;transform:translateX(-6px);}to{opacity:1;transform:translateX(0);}}
+.log-t{font-family:'JetBrains Mono',monospace;color:var(--cyan);min-width:56px;font-size:10px;}
+.log-d{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.log-m{flex:1;color:var(--muted);}
+.lg-good .log-m{color:var(--green);}
+.lg-posture .log-m{color:var(--red);}
+.lg-phone .log-m{color:var(--amber);}
+.lg-environment .log-m,.lg-light .log-m{color:var(--purple);}
+
+/* ══ STUDY ANALYTICS ══════════════════════════════════ */
+.analytics-grid{display:grid;grid-template-columns:repeat(3,1fr) 1.2fr;gap:14px;margin-bottom:14px;}
+.analytics-grid .card{animation-delay:3.6s;}
+.time-circle{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 0;}
+.tc-ring{transform:rotate(-90deg);}
+.tc-track{fill:none;stroke:var(--b1);stroke-width:10;}
+.tc-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dasharray 1.2s cubic-bezier(.4,0,.2,1);}
+.tc-val{font-family:'Orbitron',monospace;font-size:20px;font-weight:700;}
+.tc-lbl{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.focus-bars{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.fbar-row{display:flex;flex-direction:column;gap:4px;}
+.fbar-lbl{display:flex;justify-content:space-between;font-size:11px;}
+.fbar-lbl span:first-child{color:var(--muted);}
+.fbar-bg{height:6px;background:var(--b1);border-radius:6px;overflow:hidden;}
+.fbar-fill{height:100%;border-radius:6px;transition:width 1s cubic-bezier(.4,0,.2,1);}
+.pie-wrap{position:relative;display:flex;align-items:center;justify-content:center;}
+.pie-legend{display:flex;flex-direction:column;gap:6px;margin-left:14px;}
+.pie-leg-item{display:flex;align-items:center;gap:6px;font-size:11px;}
+.pie-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* ══ GAS ANALYSIS ════════════════════════════════════ */
+.gas-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.gas-card{padding:14px 16px;border-radius:12px;background:rgba(6,10,20,.95);border:1px solid var(--b1);transition:all .3s;animation:fadeUp .5s ease both 3.7s;position:relative;overflow:hidden;}
+.gas-card:hover{transform:translateY(-3px);border-color:var(--b2);}
+.gas-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 12px 12px;transition:background .5s;}
+.gas-ico{font-size:22px;margin-bottom:6px;}
+.gas-name{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:1px;margin-bottom:3px;}
+.gas-formula{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:8px;}
+.gas-val{font-family:'Orbitron',monospace;font-size:18px;font-weight:700;}
+.gas-unit{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+.gas-level{font-size:10px;margin-top:6px;font-family:'JetBrains Mono',monospace;}
+.gas-bar-bg{height:3px;background:var(--b1);border-radius:3px;margin-top:6px;overflow:hidden;}
+.gas-bar-fill{height:100%;border-radius:3px;transition:width 1s cubic-bezier(.4,0,.2,1);}
+
+/* ══ CHARTS ══════════════════════════════════════════ */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.chart-row canvas{max-height:120px;}
+.chart-row .card{animation-delay:3.75s;}
+
+/* ══ TOOLS ROW ═══════════════════════════════════════ */
+.tools-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+
+/* ── Pomodoro ── */
+.pomo-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.pomo-ring-wrap{position:relative;display:flex;align-items:center;justify-content:center;}
+.pomo-ring{overflow:visible;}
+.pomo-track{fill:none;stroke:var(--b1);stroke-width:12;}
+.pomo-fill{fill:none;stroke-width:12;stroke-linecap:round;transform-origin:center;transform:rotate(-90deg);transition:stroke-dashoffset .5s linear,stroke .5s;}
+.pomo-center{position:absolute;text-align:center;}
+.pomo-time{font-family:'Orbitron',monospace;font-size:28px;font-weight:700;color:var(--cyan);text-shadow:0 0 20px rgba(0,238,255,.4);}
+.pomo-mode{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:1px;}
+.pomo-session{font-family:'Orbitron',monospace;font-size:11px;color:var(--amber);margin-top:3px;}
+.pomo-btns{display:flex;gap:8px;}
+.pbtn{padding:8px 18px;border-radius:10px;border:1px solid var(--b2);background:rgba(255,255,255,.02);cursor:pointer;color:var(--tx);font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:1px;transition:all .3s;}
+.pbtn:hover{background:rgba(0,136,255,.1);border-color:var(--blue);color:var(--cyan);}
+.pbtn.primary{background:linear-gradient(135deg,var(--blue),var(--cyan));border-color:transparent;color:#fff;}
+.pbtn.primary:hover{box-shadow:0 4px 20px rgba(0,136,255,.4);transform:translateY(-2px);}
+.pomo-modes{display:flex;gap:6px;}
+.pmode{padding:5px 12px;border-radius:8px;border:1px solid var(--b1);background:transparent;cursor:pointer;color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace;transition:all .3s;}
+.pmode.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,238,255,.06);}
+.pomo-dots{display:flex;gap:5px;}
+.pdot{width:8px;height:8px;border-radius:50%;background:var(--b2);transition:background .3s;}
+.pdot.done{background:var(--amber);box-shadow:0 0 6px var(--amber);}
+
+/* ── Ambient ── */
+.ambient-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;}
+.asound{padding:10px;border-radius:10px;border:1px solid var(--b1);background:rgba(255,255,255,.01);cursor:pointer;text-align:center;transition:all .3s;user-select:none;}
+.asound:hover,.asound.on{border-color:var(--cyan);background:rgba(0,238,255,.06);}
+.asound.on .as-ico{filter:drop-shadow(0 0 8px currentColor);}
+.as-ico{font-size:24px;display:block;margin-bottom:4px;}
+.as-name{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);}
+.asound.on .as-name{color:var(--cyan);}
+.vol-row{display:flex;align-items:center;gap:10px;margin-top:4px;}
+.vol-lbl{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);}
+#vol-slider{flex:1;accent-color:var(--cyan);}
+.vol-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--cyan);min-width:28px;}
+
+/* ══ CHATBOT ══════════════════════════════════════════ */
+.chat-wrap{display:flex;flex-direction:column;height:400px;}
+.chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 0;margin-bottom:12px;}
+.cmsg{display:flex;gap:10px;align-items:flex-end;animation:msgIn .3s ease;}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.cmsg.user{flex-direction:row-reverse;}
+.cmsg-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.av-bot{background:linear-gradient(135deg,var(--blue),var(--purple));box-shadow:0 0 10px rgba(0,136,255,.3);}
+.av-user{background:linear-gradient(135deg,var(--b2),var(--b3));}
+.cmsg-bubble{max-width:75%;padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;}
+.bot-bubble{background:rgba(0,136,255,.08);border:1px solid rgba(0,136,255,.2);border-bottom-left-radius:4px;color:var(--tx);}
+.user-bubble{background:rgba(26,53,96,.6);border:1px solid var(--b2);border-bottom-right-radius:4px;color:var(--tx);}
+.typing-bubble{background:rgba(0,136,255,.08);border:1px solid rgba(0,136,255,.2);border-bottom-left-radius:4px;padding:12px 16px;display:inline-flex;gap:5px;align-items:center;}
+.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);animation:typingBounce 1.2s ease-in-out infinite;}
+.typing-dot:nth-child(2){animation-delay:.2s;}
+.typing-dot:nth-child(3){animation-delay:.4s;}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+.chat-input-row{display:flex;gap:8px;}
+#chat-input{flex:1;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--b2);color:var(--tx);font-family:'Rajdhani',sans-serif;font-size:14px;outline:none;transition:border-color .3s;}
+#chat-input:focus{border-color:var(--cyan);box-shadow:0 0 12px rgba(0,238,255,.1);}
+#chat-input::placeholder{color:var(--muted);}
+#chat-send{padding:10px 16px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--cyan));border:none;color:#fff;cursor:pointer;font-size:16px;transition:all .3s;flex-shrink:0;}
+#chat-send:hover{box-shadow:0 4px 16px rgba(0,136,255,.4);transform:translateY(-1px);}
+.chat-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.qbtn{padding:4px 10px;border-radius:20px;border:1px solid var(--b2);background:transparent;color:var(--muted);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .3s;}
+.qbtn:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,238,255,.04);}
+
+/* ══ RESPONSIVE ══════════════════════════════════════ */
+@media(max-width:1100px){
+  .main-grid{grid-template-columns:240px 1fr;}
+  .analytics-grid{grid-template-columns:1fr 1fr;}
+  .gas-grid{grid-template-columns:1fr 1fr;}
+  .stat-row{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ PRELOADER ══════════════════════════════════════ -->
+<div id="preloader">
+  <svg class="pre-neural" viewBox="0 0 120 120">
+    <circle cx="60" cy="60" r="56" fill="none" stroke="url(#pgu1)" stroke-width="1.5" stroke-dasharray="6 4" opacity=".6"/>
+    <circle cx="60" cy="60" r="40" fill="none" stroke="url(#pgu2)" stroke-width="1" stroke-dasharray="4 6" opacity=".4"/>
+    <circle cx="60" cy="60" r="12" fill="url(#pgu3)"/>
+    <circle cx="60" cy="8"  r="5" fill="#00eeff"/><circle cx="108" cy="34" r="5" fill="#0088ff"/>
+    <circle cx="108" cy="86" r="5" fill="#bb44ff"/><circle cx="60"  cy="112" r="5" fill="#00eeff"/>
+    <circle cx="12"  cy="86" r="5" fill="#0088ff"/><circle cx="12"  cy="34" r="5" fill="#bb44ff"/>
+    <line x1="60" y1="13" x2="60" y2="48" stroke="#00eeff" stroke-width="1" opacity=".5"/>
+    <line x1="103" y1="37" x2="72" y2="54" stroke="#0088ff" stroke-width="1" opacity=".5"/>
+    <line x1="103" y1="83" x2="72" y2="66" stroke="#bb44ff" stroke-width="1" opacity=".5"/>
+    <line x1="60" y1="107" x2="60" y2="72" stroke="#00eeff" stroke-width="1" opacity=".5"/>
+    <line x1="17" y1="83" x2="48" y2="66" stroke="#0088ff" stroke-width="1" opacity=".5"/>
+    <line x1="17" y1="37" x2="48" y2="54" stroke="#bb44ff" stroke-width="1" opacity=".5"/>
+    <defs>
+      <linearGradient id="pgu1" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#00eeff"/><stop offset="100%" stop-color="#bb44ff"/></linearGradient>
+      <linearGradient id="pgu2" x1="0" y1="0" x2="120" y2="120" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#0088ff"/><stop offset="100%" stop-color="#00eeff"/></linearGradient>
+      <radialGradient id="pgu3"><stop offset="0%" stop-color="#00eeff"/><stop offset="100%" stop-color="#0088ff"/></radialGradient>
+    </defs>
+  </svg>
+  <div class="pre-title">NEURODESK</div>
+  <div class="pre-tagline">AI-POWERED STUDY ENVIRONMENT MONITOR</div>
+  <div class="pre-bar-wrap">
+    <div class="pre-bar-top"><span>INITIALIZING SYSTEMS</span><span id="pre-pct">0%</span></div>
+    <div class="pre-bar-bg"><div class="pre-bar"></div></div>
+    <div class="pre-log">
+      <div class="pre-log-line">[ OK ] Neural detection modules online</div>
+      <div class="pre-log-line">[ OK ] Sensor interface connected</div>
+      <div class="pre-log-line">[ OK ] Flask API server running</div>
+      <div class="pre-log-line">[ OK ] Three.js environment loaded</div>
+      <div class="pre-log-line ok">[ ✓✓ ] NEURODESK ready. Welcome!</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ OVERLAYS ════════════════════════════════════════ -->
+<div id="flash"></div>
+<div id="toasts"></div>
+<canvas id="bg-canvas"></canvas>
+<div class="scanlines"></div>
+
+<!-- ══ PDF BTN ══════════════════════════════════════════ -->
+<button id="pdf-btn" onclick="generatePDF()">📄 DOWNLOAD REPORT</button>
+
+<div class="page">
+
+<!-- Header -->
+<header>
+  <div class="hlogo">
+    <svg class="logo-mark" viewBox="0 0 44 44" fill="none">
+      <circle cx="22" cy="22" r="20" stroke="url(#lgu1)" stroke-width="1.5"/>
+      <circle cx="22" cy="22" r="7" fill="url(#lgu2)"/>
+      <circle cx="22" cy="5"  r="2.5" fill="#00eeff"/>
+      <circle cx="37" cy="13" r="2.5" fill="#0088ff"/>
+      <circle cx="37" cy="31" r="2.5" fill="#bb44ff"/>
+      <circle cx="22" cy="39" r="2.5" fill="#00eeff"/>
+      <circle cx="7"  cy="31" r="2.5" fill="#0088ff"/>
+      <circle cx="7"  cy="13" r="2.5" fill="#bb44ff"/>
+      <line x1="22" y1="7.5" x2="22" y2="15" stroke="#00eeff" stroke-width=".8" opacity=".6"/>
+      <line x1="34.8" y1="14.5" x2="29" y2="18" stroke="#0088ff" stroke-width=".8" opacity=".6"/>
+      <line x1="34.8" y1="29.5" x2="29" y2="26" stroke="#bb44ff" stroke-width=".8" opacity=".6"/>
+      <line x1="22" y1="36.5" x2="22" y2="29" stroke="#00eeff" stroke-width=".8" opacity=".6"/>
+      <line x1="9.2" y1="29.5" x2="15" y2="26" stroke="#0088ff" stroke-width=".8" opacity=".6"/>
+      <line x1="9.2" y1="14.5" x2="15" y2="18" stroke="#bb44ff" stroke-width=".8" opacity=".6"/>
+      <defs>
+        <linearGradient id="lgu1" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#00eeff"/><stop offset="100%" stop-color="#bb44ff"/></linearGradient>
+        <radialGradient id="lgu2"><stop offset="0%" stop-color="#00eeff"/><stop offset="100%" stop-color="#0088ff"/></radialGradient>
+      </defs>
+    </svg>
+    <div class="hlogo-text"><h1>NEURODESK</h1><p>AI STUDY ENVIRONMENT MONITOR · v2.1</p></div>
+  </div>
+  <div class="hright">
+    <div class="h-clock"><div class="lbl">SESSION TIME</div><div class="val" id="h-clock">00:00:00</div></div>
+    <div class="live-badge"><span class="ldot"></span>LIVE</div>
+  </div>
+</header>
+
+<!-- Controls -->
+<div class="ctrl-row">
+  <div class="ctrl-lbl">⬡ CONTROLS</div>
+  <div class="cbtn" id="cbtn-cam" onclick="toggleWebcam()">
+    <div class="cbtn-l"><span class="cbtn-icon">📷</span><div><div class="cbtn-name">Webcam</div><div class="cbtn-stat" id="cam-stat">Offline</div></div></div>
+    <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" id="tog-cam" onchange="toggleWebcam()"><span class="tslide"></span></label>
+  </div>
+  <div class="cbtn" id="cbtn-ai" onclick="toggleDetect()">
+    <div class="cbtn-l"><span class="cbtn-icon">🤖</span><div><div class="cbtn-name">AI Detection</div><div class="cbtn-stat" id="ai-stat">Webcam required</div></div></div>
+    <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" id="tog-ai" onchange="toggleDetect()"><span class="tslide"></span></label>
+  </div>
+</div>
+
+<!-- Stat row -->
+<div class="stat-row">
+  <div class="sc"><div class="sc-lbl">Focus Score</div><div class="sc-val c-gr" id="s-focus">100</div><div class="sc-sub">/ 100</div></div>
+  <div class="sc"><div class="sc-lbl">Session Alerts</div><div class="sc-val c-re" id="s-alerts">0</div><div class="sc-sub">this session</div></div>
+  <div class="sc"><div class="sc-lbl">Temperature</div><div class="sc-val c-am" id="s-temp">—</div><div class="sc-sub">°C</div></div>
+  <div class="sc"><div class="sc-lbl">Humidity</div><div class="sc-val c-cy" id="s-hum">—</div><div class="sc-sub">%</div></div>
+  <div class="sc"><div class="sc-lbl">Air Quality</div><div class="sc-val c-pu" id="s-gas">—</div><div class="sc-sub">index</div></div>
+  <div class="sc"><div class="sc-lbl">Light Level</div><div class="sc-val c-or" id="s-light">—</div><div class="sc-sub" id="s-light-lbl">lux</div></div>
+</div>
+
+<!-- Banner -->
+<div id="banner" class="bn-good">
+  <div class="bn-icon" id="bn-icon">✅</div>
+  <div class="bn-body">
+    <div class="bn-title" id="bn-title">NEURODESK READY</div>
+    <div class="bn-sub" id="bn-sub">Start webcam to begin AI monitoring</div>
+    <div class="bn-bar"><div class="bn-fill" id="bn-fill" style="width:100%"></div></div>
+  </div>
+  <div class="bn-time" id="bn-time">—</div>
+</div>
+
+<!-- Main Grid -->
+<div class="main-grid">
+  <!-- Gauges -->
+  <div class="card" style="animation-delay:3.4s">
+    <div class="card-hdr" style="color:var(--cyan)">Sensor Gauges</div>
+    <div class="gauge-list">
+      <div class="gi">
+        <svg width="64" height="38" viewBox="0 0 64 38">
+          <path class="gt" d="M6,34 A28,28 0 0,1 58,34"/>
+          <path class="gf" id="gf-temp" d="M6,34 A28,28 0 0,1 58,34" stroke="#ff2244" style="stroke-dasharray:88;stroke-dashoffset:88"/>
+          <text class="gv" id="gv-temp" x="32" y="28" style="font-size:10px;fill:#ff2244">—</text>
+        </svg>
+        <div class="gi-info"><div class="gi-name" style="color:#ff2244">Temperature</div><div class="gi-val" id="gi-temp">— °C</div><div class="gi-status" id="gs-temp" style="color:var(--muted)">—</div></div>
+      </div>
+      <div class="gi">
+        <svg width="64" height="38" viewBox="0 0 64 38">
+          <path class="gt" d="M6,34 A28,28 0 0,1 58,34"/>
+          <path class="gf" id="gf-hum" d="M6,34 A28,28 0 0,1 58,34" stroke="#0088ff" style="stroke-dasharray:88;stroke-dashoffset:88"/>
+          <text class="gv" id="gv-hum" x="32" y="28" style="font-size:10px;fill:#0088ff">—</text>
+        </svg>
+        <div class="gi-info"><div class="gi-name" style="color:#0088ff">Humidity</div><div class="gi-val" id="gi-hum">— %</div><div class="gi-status" id="gs-hum" style="color:var(--muted)">—</div></div>
+      </div>
+      <div class="gi">
+        <svg width="64" height="38" viewBox="0 0 64 38">
+          <path class="gt" d="M6,34 A28,28 0 0,1 58,34"/>
+          <path class="gf" id="gf-gas" d="M6,34 A28,28 0 0,1 58,34" stroke="#00ff88" style="stroke-dasharray:88;stroke-dashoffset:88"/>
+          <text class="gv" id="gv-gas" x="32" y="28" style="font-size:10px;fill:#00ff88">—</text>
+        </svg>
+        <div class="gi-info"><div class="gi-name" style="color:#00ff88">Air Quality</div><div class="gi-val" id="gi-gas">— idx</div><div class="gi-status" id="gs-gas" style="color:var(--muted)">—</div></div>
+      </div>
+      <div class="gi">
+        <svg width="64" height="38" viewBox="0 0 64 38">
+          <path class="gt" d="M6,34 A28,28 0 0,1 58,34"/>
+          <path class="gf" id="gf-light" d="M6,34 A28,28 0 0,1 58,34" stroke="#ff5500" style="stroke-dasharray:88;stroke-dashoffset:88"/>
+          <text class="gv" id="gv-light" x="32" y="28" style="font-size:10px;fill:#ff5500">—</text>
+        </svg>
+        <div class="gi-info"><div class="gi-name" style="color:#ff5500">Light</div><div class="gi-val" id="gi-light">— lux</div><div class="gi-status" id="gs-light" style="color:var(--muted)">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Middle: Status + Webcam -->
+  <div style="display:flex;flex-direction:column;gap:12px;">
+    <div class="card" style="animation-delay:3.45s">
+      <div class="card-hdr" style="color:var(--blue)">Detection Status</div>
+      <div class="slist">
+        <div class="si" id="si-post"><span class="sdot dd" id="sd-post"></span><div class="si-info"><div class="si-name">Posture Monitor</div><div class="si-desc" id="ss-post">Waiting...</div></div><span class="sbadge bdim" id="sb-post">Offline</span></div>
+        <div class="si" id="si-phone"><span class="sdot dd" id="sd-phone"></span><div class="si-info"><div class="si-name">Phone Detector</div><div class="si-desc" id="ss-phone">Waiting...</div></div><span class="sbadge bdim" id="sb-phone">Offline</span></div>
+        <div class="si" id="si-env"><span class="sdot dg" id="sd-env"></span><div class="si-info"><div class="si-name">Environment</div><div class="si-desc" id="ss-env">Reading sensors...</div></div><span class="sbadge bok" id="sb-env">Good</span></div>
+        <div class="si" id="si-light"><span class="sdot dg" id="sd-light"></span><div class="si-info"><div class="si-name">Light Monitor</div><div class="si-desc" id="ss-light">Reading LDR...</div></div><span class="sbadge bok" id="sb-light">Good</span></div>
+      </div>
+    </div>
+    <div class="card" style="animation-delay:3.5s;flex:1;">
+      <div class="card-hdr" style="color:var(--cyan)">Live Camera Feed</div>
+      <div class="cam-wrap" id="cam-wrap">
+        <div class="cam-off" id="cam-off"><div class="cam-off-ico">📷</div><div class="cam-off-txt">Webcam offline</div><div class="cam-off-txt" style="opacity:.4">Use toggle above</div></div>
+        <img id="wcam" src="" style="display:none" alt="feed"/>
+        <div class="cam-scan"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card" style="animation-delay:3.55s">
+    <div class="card-hdr" style="color:var(--purple)">Alert History</div>
+    <div class="log-scroll">
+      <ul class="log-list" id="log-list">
+        <li class="log-item lg-good"><span class="log-t">--:--:--</span><span class="log-d" style="background:var(--cyan)"></span><span class="log-m">NEURODESK initialized</span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Study Analytics -->
+<div style="margin-bottom:14px;">
+  <div class="card" style="animation-delay:3.6s">
+    <div class="card-hdr" style="color:var(--green)">📊 Study Analytics — Session Breakdown</div>
+    <div class="analytics-grid" style="display:grid;grid-template-columns:repeat(3,1fr) 1.4fr;gap:14px;">
+      <!-- Focused time circle -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <svg width="110" height="110" viewBox="0 0 110 110" class="tc-ring">
+            <circle class="tc-track" cx="55" cy="55" r="44"/>
+            <circle class="tc-fill" id="tc-focus" cx="55" cy="55" r="44" stroke="#00ff88" stroke-dasharray="0 276.46" stroke-linecap="round"/>
+          </svg>
+          <div style="position:absolute;text-align:center;">
+            <div class="tc-val c-gr" id="tc-focus-val">0:00</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);">FOCUSED</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">Deep focus time</div>
+      </div>
+      <!-- Phone time circle -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <svg width="110" height="110" viewBox="0 0 110 110" class="tc-ring">
+            <circle class="tc-track" cx="55" cy="55" r="44"/>
+            <circle class="tc-fill" id="tc-phone" cx="55" cy="55" r="44" stroke="#ffaa00" stroke-dasharray="0 276.46" stroke-linecap="round"/>
+          </svg>
+          <div style="position:absolute;text-align:center;">
+            <div class="tc-val c-am" id="tc-phone-val">0:00</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);">PHONE</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">Phone distraction</div>
+      </div>
+      <!-- Posture time circle -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <svg width="110" height="110" viewBox="0 0 110 110" class="tc-ring">
+            <circle class="tc-track" cx="55" cy="55" r="44"/>
+            <circle class="tc-fill" id="tc-posture" cx="55" cy="55" r="44" stroke="#ff2244" stroke-dasharray="0 276.46" stroke-linecap="round"/>
+          </svg>
+          <div style="position:absolute;text-align:center;">
+            <div class="tc-val c-re" id="tc-posture-val">0:00</div>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);">BAD POSTURE</div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">Posture issues</div>
+      </div>
+      <!-- Breakdown bars -->
+      <div style="display:flex;flex-direction:column;justify-content:center;gap:10px;padding:0 8px;">
+        <div style="font-weight:600;font-size:13px;color:var(--tx);margin-bottom:4px;">Session Efficiency</div>
+        <div class="fbar-row">
+          <div class="fbar-lbl"><span>Focused</span><span class="c-gr" id="pct-focus">0%</span></div>
+          <div class="fbar-bg"><div class="fbar-fill" id="fb-focus" style="width:0;background:var(--green)"></div></div>
+        </div>
+        <div class="fbar-row">
+          <div class="fbar-lbl"><span>Phone distraction</span><span class="c-am" id="pct-phone">0%</span></div>
+          <div class="fbar-bg"><div class="fbar-fill" id="fb-phone" style="width:0;background:var(--amber)"></div></div>
+        </div>
+        <div class="fbar-row">
+          <div class="fbar-lbl"><span>Bad posture</span><span class="c-re" id="pct-posture">0%</span></div>
+          <div class="fbar-bg"><div class="fbar-fill" id="fb-posture" style="width:0;background:var(--red)"></div></div>
+        </div>
+        <div style="margin-top:6px;padding:10px;border-radius:8px;background:rgba(0,136,255,.06);border:1px solid rgba(0,136,255,.15);">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;">EFFICIENCY GRADE</div>
+          <div style="font-family:'Orbitron',monospace;font-size:20px;font-weight:700;margin-top:2px;" id="grade-val" class="c-gr">A+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Gas Analysis -->
+<div style="margin-bottom:14px;">
+  <div class="card" style="animation-delay:3.65s">
+    <div class="card-hdr" style="color:var(--purple)">🔬 Gas Analysis — Estimated Composition</div>
+    <div class="gas-grid">
+      <div class="gas-card" id="gc-co2"><div class="gas-ico">💨</div><div class="gas-name">CARBON DIOXIDE</div><div class="gas-formula">CO₂</div><div class="gas-val c-cy" id="gval-co2">—</div><div class="gas-unit">ppm</div><div class="gas-level" id="glvl-co2">Normal</div><div class="gas-bar-bg"><div class="gas-bar-fill" id="gbar-co2" style="width:0;background:var(--cyan)"></div></div></div>
+      <div class="gas-card" id="gc-nh3"><div class="gas-ico">⚗️</div><div class="gas-name">AMMONIA</div><div class="gas-formula">NH₃</div><div class="gas-val c-pu" id="gval-nh3">—</div><div class="gas-unit">ppm</div><div class="gas-level" id="glvl-nh3">Trace</div><div class="gas-bar-bg"><div class="gas-bar-fill" id="gbar-nh3" style="width:0;background:var(--purple)"></div></div></div>
+      <div class="gas-card" id="gc-co"><div class="gas-ico">☁️</div><div class="gas-name">CARBON MONOXIDE</div><div class="gas-formula">CO</div><div class="gas-val c-am" id="gval-co">—</div><div class="gas-unit">ppm</div><div class="gas-level" id="glvl-co">Safe</div><div class="gas-bar-bg"><div class="gas-bar-fill" id="gbar-co" style="width:0;background:var(--amber)"></div></div></div>
+      <div class="gas-card" id="gc-voc"><div class="gas-ico">🌫️</div><div class="gas-name">VOC / BENZENE</div><div class="gas-formula">C₆H₆</div><div class="gas-val c-gr" id="gval-voc">—</div><div class="gas-unit">ppb</div><div class="gas-level" id="glvl-voc">Normal</div><div class="gas-bar-bg"><div class="gas-bar-fill" id="gbar-voc" style="width:0;background:var(--green)"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="chart-row" style="animation-delay:3.7s">
+  <div class="card chart-row"><div class="card-hdr" style="color:#ff2244">🌡️ Temperature</div><canvas id="cTemp"></canvas></div>
+  <div class="card chart-row"><div class="card-hdr" style="color:#0088ff">💧 Humidity</div><canvas id="cHum"></canvas></div>
+</div>
+<div class="chart-row" style="animation-delay:3.75s">
+  <div class="card chart-row"><div class="card-hdr" style="color:#00ff88">🌿 Air Quality</div><canvas id="cGas"></canvas></div>
+  <div class="card chart-row"><div class="card-hdr" style="color:#ff5500">💡 Light Level</div><canvas id="cLight"></canvas></div>
+</div>
+
+<!-- Tools Row: Pomodoro + Ambient -->
+<div class="tools-row">
+  <!-- Pomodoro -->
+  <div class="card" style="animation-delay:3.8s">
+    <div class="card-hdr" style="color:var(--amber)">🍅 Pomodoro Timer</div>
+    <div class="pomo-wrap">
+      <div class="pomo-modes">
+        <button class="pmode active" onclick="setPomoMode('work',25)">Work 25m</button>
+        <button class="pmode" onclick="setPomoMode('short',5)">Break 5m</button>
+        <button class="pmode" onclick="setPomoMode('long',15)">Long 15m</button>
+      </div>
+      <div class="pomo-ring-wrap">
+        <svg class="pomo-ring" width="160" height="160" viewBox="0 0 160 160">
+          <circle class="pomo-track" cx="80" cy="80" r="68"/>
+          <circle class="pomo-fill" id="pomo-fill" cx="80" cy="80" r="68" stroke="var(--amber)" stroke-dasharray="427.26" stroke-dashoffset="0"/>
+        </svg>
+        <div class="pomo-center">
+          <div class="pomo-time" id="pomo-time">25:00</div>
+          <div class="pomo-mode" id="pomo-mode-lbl">WORK SESSION</div>
+          <div class="pomo-session" id="pomo-sess">#1 of 4</div>
+        </div>
+      </div>
+      <div class="pomo-btns">
+        <button class="pbtn" onclick="resetPomo()">↺ RESET</button>
+        <button class="pbtn primary" id="pomo-start" onclick="togglePomo()">▶ START</button>
+        <button class="pbtn" onclick="skipPomo()">⏭ SKIP</button>
+      </div>
+      <div class="pomo-dots" id="pomo-dots">
+        <div class="pdot"></div><div class="pdot"></div><div class="pdot"></div><div class="pdot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ambient Sounds -->
+  <div class="card" style="animation-delay:3.85s">
+    <div class="card-hdr" style="color:var(--cyan)">🎵 Ambient Sound Control</div>
+    <div class="ambient-grid">
+      <div class="asound" id="as-rain" onclick="toggleSound('rain')"><span class="as-ico">🌧️</span><div class="as-name">Rain</div></div>
+      <div class="asound" id="as-focus" onclick="toggleSound('focus')"><span class="as-ico">🎯</span><div class="as-name">Focus</div></div>
+      <div class="asound" id="as-ocean" onclick="toggleSound('ocean')"><span class="as-ico">🌊</span><div class="as-name">Ocean</div></div>
+      <div class="asound" id="as-cafe" onclick="toggleSound('cafe')"><span class="as-ico">☕</span><div class="as-name">Café</div></div>
+      <div class="asound" id="as-forest" onclick="toggleSound('forest')"><span class="as-ico">🌲</span><div class="as-name">Forest</div></div>
+      <div class="asound" id="as-space" onclick="toggleSound('space')"><span class="as-ico">🚀</span><div class="as-name">Space</div></div>
+    </div>
+    <div class="vol-row">
+      <span class="vol-lbl">🔈 VOLUME</span>
+      <input type="range" id="vol-slider" min="0" max="100" value="40" oninput="setVolume(this.value)"/>
+      <span class="vol-val" id="vol-val">40%</span>
+    </div>
+    <div style="margin-top:10px;padding:10px;border-radius:8px;background:rgba(0,238,255,.04);border:1px solid rgba(0,238,255,.1);">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">NOW PLAYING</div>
+      <div style="font-size:12px;color:var(--cyan);" id="now-playing">— Select a sound —</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chatbot -->
+<div class="card" style="animation-delay:3.9s;margin-bottom:80px;">
+  <div class="card-hdr" style="color:var(--blue)">🧠 NEURODESK AI Assistant</div>
+  <div class="chat-quick">
+    <button class="qbtn" onclick="quickChat('How is the air quality?')">Air quality</button>
+    <button class="qbtn" onclick="quickChat('How is my focus today?')">My focus</button>
+    <button class="qbtn" onclick="quickChat('Give me a study tip')">Study tip</button>
+    <button class="qbtn" onclick="quickChat('What is my posture status?')">Posture</button>
+    <button class="qbtn" onclick="quickChat('Should I take a break?')">Break?</button>
+    <button class="qbtn" onclick="quickChat('What gases are in the room?')">Gas info</button>
+    <button class="qbtn" onclick="quickChat('What is the temperature like?')">Temperature</button>
+    <button class="qbtn" onclick="quickChat('How does NEURODESK work?')">About</button>
+  </div>
+  <div class="chat-wrap">
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="cmsg">
+        <div class="cmsg-avatar av-bot">🧠</div>
+        <div class="cmsg-bubble bot-bubble">Hello! I am <strong>NEURODESK AI</strong> 🧠 — your intelligent study environment companion. I can answer questions about your sensors, study performance, air quality, posture, and more. How can I help you today?</div>
+      </div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask NEURODESK anything..." onkeydown="if(event.key==='Enter') sendChat()"/>
+      <button id="chat-send" onclick="sendChat()">➤</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<script>
+// ══ PRELOADER ════════════════════════════════════════
+let pp=0;const ppEl=document.getElementById('pre-pct');
+const ppT=setInterval(()=>{pp=Math.min(100,pp+Math.random()*5+1);if(ppEl)ppEl.textContent=Math.floor(pp)+'%';if(pp>=100)clearInterval(ppT);},45);
+setTimeout(()=>{const p=document.getElementById('preloader');p.classList.add('out');setTimeout(()=>p.style.display='none',900);},2800);
+
+// ══ THREE.JS NEURAL BACKGROUND ════════════════════════
+(()=>{
+  const cv=document.getElementById('bg-canvas');
+  const rnd=new THREE.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+  rnd.setPixelRatio(Math.min(devicePixelRatio,2));
+  rnd.setSize(innerWidth,innerHeight);
+  const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.1,1000);
+  cam.position.z=90;
+  const N=100,pa=new Float32Array(N*3),vel=[];
+  for(let i=0;i<N;i++){pa[i*3]=(Math.random()-.5)*180;pa[i*3+1]=(Math.random()-.5)*110;pa[i*3+2]=(Math.random()-.5)*60;vel.push((Math.random()-.5)*.03,(Math.random()-.5)*.03,(Math.random()-.5)*.012);}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pa,3));
+  const ptM=new THREE.PointsMaterial({color:0x0088ff,size:.7,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false});
+  sc.add(new THREE.Points(geo,ptM));
+  const lM=new THREE.LineBasicMaterial({color:0x0088ff,transparent:true,opacity:.07,blending:THREE.AdditiveBlending,depthWrite:false});
+  let lO=null,fc=0;
+  function bL(){const lp=[],D=28;for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){const dx=pa[i*3]-pa[j*3],dy=pa[i*3+1]-pa[j*3+1],dz=pa[i*3+2]-pa[j*3+2];if(dx*dx+dy*dy+dz*dz<D*D)lp.push(pa[i*3],pa[i*3+1],pa[i*3+2],pa[j*3],pa[j*3+1],pa[j*3+2]);}if(lO)sc.remove(lO);const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(lp),3));lO=new THREE.LineSegments(lg,lM);sc.add(lO);}
+  (function a(){requestAnimationFrame(a);for(let i=0;i<N;i++){pa[i*3]+=vel[i*3];pa[i*3+1]+=vel[i*3+1];pa[i*3+2]+=vel[i*3+2];if(Math.abs(pa[i*3])>90)vel[i*3]*=-1;if(Math.abs(pa[i*3+1])>55)vel[i*3+1]*=-1;if(Math.abs(pa[i*3+2])>30)vel[i*3+2]*=-1;}geo.attributes.position.needsUpdate=true;if(++fc%4===0)bL();rnd.render(sc,cam);})();
+  bL();
+  window.addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();rnd.setSize(innerWidth,innerHeight);});
+  window.setNetClr=h=>{ptM.color.setHex(h);lM.color.setHex(h);};
+})();
+
+// ══ TOAST ════════════════════════════════════════════
+const tCfg={good:{icon:'✅',cls:'t-good',title:'ALL GOOD'},posture:{icon:'⚠️',cls:'t-posture',title:'POSTURE ALERT'},phone:{icon:'📵',cls:'t-phone',title:'DISTRACTION'},environment:{icon:'💨',cls:'t-environment',title:'ENV ALERT'},light:{icon:'🌑',cls:'t-light',title:'LOW LIGHT'},info:{icon:'ℹ️',cls:'t-info',title:'INFO'}};
+let lastTType='';
+function toast(type,msg){
+  if(type==='good'&&type===lastTType)return;
+  lastTType=type;
+  const c=tCfg[type]||tCfg.info,tc=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className=`toast ${c.cls}`;t.style.position='relative';
+  t.innerHTML=`<div class="t-icon">${c.icon}</div><div class="t-body"><div class="t-title">${c.title}</div><div class="t-msg">${msg}</div></div><div class="t-close" onclick="this.parentElement.remove()">✕</div><div class="t-prog"></div>`;
+  tc.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('in')));
+  if(type!=='good'){const fl=document.getElementById('flash');const cs={posture:'rgba(255,34,68,.1)',phone:'rgba(255,170,0,.08)',environment:'rgba(187,68,255,.08)',light:'rgba(255,85,0,.08)'};fl.style.background=cs[type]||'transparent';fl.classList.add('go');setTimeout(()=>fl.classList.remove('go'),600);}
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.parentNode&&t.remove(),400);},4200);
+}
+
+// ══ CHARTS ════════════════════════════════════════════
+function mkC(id,lbl,clr){const ctx=document.getElementById(id).getContext('2d');return new Chart(ctx,{type:'line',data:{labels:[],datasets:[{label:lbl,data:[],borderColor:clr,backgroundColor:clr+'12',borderWidth:1.5,pointRadius:2,pointBackgroundColor:clr,fill:true,tension:.4}]},options:{responsive:true,animation:{duration:300},plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#1e3050',font:{size:8},maxTicksLimit:5},grid:{color:'rgba(13,32,64,.9)'}},y:{ticks:{color:'#1e3050',font:{size:8}},grid:{color:'rgba(13,32,64,.9)'}}}}});}
+const cTemp=mkC('cTemp','Temp','#ff2244'),cHum=mkC('cHum','Hum','#0088ff'),cGas=mkC('cGas','Gas','#00ff88'),cLight=mkC('cLight','Light','#ff5500');
+function updC(chart,labels,vals){chart.data.labels=labels;chart.data.datasets[0].data=vals;chart.update('none');}
+
+// ══ GAUGE ════════════════════════════════════════════
+function setG(id,valId,val,min,max){
+  const pct=Math.min(1,Math.max(0,(val-min)/(max-min)));
+  const el=document.getElementById(id);if(el)el.style.strokeDashoffset=88-(pct*88);
+  const ve=document.getElementById(valId);if(ve)ve.textContent=typeof val==='number'?val.toFixed(1):val;
+}
+
+// ══ ANIMATED NUMBER ══════════════════════════════════
+function aN(el,to,dec=0){if(!el)return;const from=parseFloat(el.textContent)||0,dur=700,s=performance.now();(function r(now){const t=Math.min((now-s)/dur,1),e=1-Math.pow(1-t,3);el.textContent=dec?(from+(to-from)*e).toFixed(dec):Math.round(from+(to-from)*e);if(t<1)requestAnimationFrame(r);})(performance.now());}
+
+// ══ SESSION TIMER ════════════════════════════════════
+const t0=Date.now();
+setInterval(()=>{const s=Math.floor((Date.now()-t0)/1000);const h=String(Math.floor(s/3600)).padStart(2,'0'),m=String(Math.floor(s%3600/60)).padStart(2,'0'),sc=String(s%60).padStart(2,'0');document.getElementById('h-clock').textContent=`${h}:${m}:${sc}`;},1000);
+
+// ══ CONTROLS ════════════════════════════════════════
+let wOn=false,dOn=false;
+async function toggleWebcam(){const r=await(await fetch('/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:wOn?'stop_webcam':'start_webcam'})})).json();wOn=r.webcam_on;dOn=r.detection_on;syncCtrl();}
+async function toggleDetect(){if(!wOn&&!dOn){toast('info','Start webcam first!');return;}const r=await(await fetch('/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:dOn?'stop_detection':'start_detection'})})).json();wOn=r.webcam_on;dOn=r.detection_on;syncCtrl();}
+function syncCtrl(){
+  document.getElementById('tog-cam').checked=wOn;document.getElementById('tog-ai').checked=dOn;
+  document.getElementById('cam-stat').textContent=wOn?'Online':'Offline';
+  document.getElementById('ai-stat').textContent=dOn?'Active':wOn?'Click to activate':'Webcam required';
+  document.getElementById('cbtn-cam').classList.toggle('on',wOn);
+  document.getElementById('cbtn-ai').classList.toggle('on',dOn);
+  const feed=document.getElementById('wcam'),off=document.getElementById('cam-off');
+  if(wOn){feed.src='/video_feed';feed.style.display='block';off.style.display='none';}
+  else{feed.src='';feed.style.display='none';off.style.display='flex';}
+}
+
+// ══ LOG ══════════════════════════════════════════════
+let lastLog='';const dotC={good:'#00ff88',posture:'#ff2244',phone:'#ffaa00',environment:'#bb44ff',light:'#ff5500'};
+function addLog(type,msg){if(msg===lastLog)return;lastLog=msg;const now=new Date().toLocaleTimeString();const li=document.createElement('li');li.className=`log-item lg-${type}`;li.innerHTML=`<span class="log-t">${now}</span><span class="log-d" style="background:${dotC[type]||'#3a5878'};box-shadow:0 0 5px ${dotC[type]||'#3a5878'}"></span><span class="log-m">${msg}</span>`;const lg=document.getElementById('log-list');lg.insertBefore(li,lg.firstChild);while(lg.children.length>60)lg.removeChild(lg.lastChild);}
+
+// ══ STUDY ANALYTICS ══════════════════════════════════
+function fmtTime(s){const m=Math.floor(s/60),sec=s%60;return`${m}:${String(sec).padStart(2,'0')}`;}
+function updAnalytics(d){
+  const fs=d.focused_seconds||0,ps=d.phone_seconds||0,bp=d.bad_posture_seconds||0;
+  const total=Math.max(1,fs+ps+bp);
+  const circ=276.46;
+  // Circles
+  document.getElementById('tc-focus-val').textContent=fmtTime(fs);
+  document.getElementById('tc-phone-val').textContent=fmtTime(ps);
+  document.getElementById('tc-posture-val').textContent=fmtTime(bp);
+  document.getElementById('tc-focus').style.strokeDasharray=`${(fs/Math.max(1,fs+3600))*circ} ${circ}`;
+  document.getElementById('tc-phone').style.strokeDasharray=`${(ps/Math.max(1,fs+3600))*circ} ${circ}`;
+  document.getElementById('tc-posture').style.strokeDasharray=`${(bp/Math.max(1,fs+3600))*circ} ${circ}`;
+  // Bars
+  const fp=Math.round(fs/total*100),pp2=Math.round(ps/total*100),bpp=Math.round(bp/total*100);
+  document.getElementById('fb-focus').style.width=fp+'%';document.getElementById('pct-focus').textContent=fp+'%';
+  document.getElementById('fb-phone').style.width=pp2+'%';document.getElementById('pct-phone').textContent=pp2+'%';
+  document.getElementById('fb-posture').style.width=bpp+'%';document.getElementById('pct-posture').textContent=bpp+'%';
+  // Grade
+  const gEl=document.getElementById('grade-val');
+  const score=d.focus_score||100;
+  const grade=score>=95?'A+ 🏆':score>=85?'A 🌟':score>=75?'B+ 👍':score>=65?'B 👌':score>=50?'C ⚠️':'D 📉';
+  const gc=score>=75?'c-gr':score>=50?'c-am':'c-re';
+  gEl.className='sc-val '+gc;gEl.textContent=grade;
+}
+
+// ══ GAS ANALYSIS ═════════════════════════════════════
+function updGases(g){
+  const f=g/300;
+  const gases={co2:{val:Math.round(400+f*300),max:1200,unit:'ppm',id:'co2',good:600},nh3:{val:Math.round(f*30),max:50,unit:'ppm',id:'nh3',good:20},co:{val:Math.round(f*8),max:35,unit:'ppm',id:'co',good:15},voc:{val:Math.round(f*80),max:500,unit:'ppb',id:'voc',good:200}};
+  for(const[k,v] of Object.entries(gases)){
+    const vEl=document.getElementById('gval-'+v.id);if(vEl)vEl.textContent=v.val;
+    const bar=document.getElementById('gbar-'+v.id);if(bar)bar.style.width=Math.min(100,v.val/v.max*100)+'%';
+    const lvl=document.getElementById('glvl-'+v.id);
+    if(lvl){if(v.val<v.good*0.4)lvl.textContent='✓ Excellent';else if(v.val<v.good)lvl.textContent='✓ Normal';else if(v.val<v.max*0.8)lvl.textContent='⚠ Elevated';else lvl.textContent='🚨 High!';}
+    const card=document.getElementById('gc-'+v.id);
+    if(card){const clr=v.val>v.good?'var(--red)':v.val>v.good*0.6?'var(--amber)':'var(--green)';card.style.borderColor=v.val>v.good?'rgba(255,34,68,.3)':'var(--b1)';}
+  }
+}
+
+// ══ POMODORO ═════════════════════════════════════════
+let pomoSec=25*60,pomoMax=25*60,pomoRunning=false,pomoTimer=null,pomoSession=0,pomoMode='work';
+const pomoCirc=427.26;
+function setPomoMode(mode,mins){
+  clearInterval(pomoTimer);pomoRunning=false;pomoMode=mode;
+  document.getElementById('pomo-start').textContent='▶ START';
+  pomoSec=pomoMax=mins*60;
+  const colors={work:'var(--amber)',short:'var(--green)',long:'var(--cyan)'};
+  const labels={work:'WORK SESSION',short:'SHORT BREAK',long:'LONG BREAK'};
+  document.getElementById('pomo-fill').style.stroke=colors[mode]||'var(--amber)';
+  document.getElementById('pomo-mode-lbl').textContent=labels[mode]||'WORK';
+  updPomo();
+  document.querySelectorAll('.pmode').forEach((b,i)=>b.classList.toggle('active',['work','short','long'][i]===mode));
+}
+function updPomo(){
+  const m=Math.floor(pomoSec/60),s=pomoSec%60;
+  document.getElementById('pomo-time').textContent=`${m}:${String(s).padStart(2,'0')}`;
+  const pct=pomoSec/pomoMax;
+  document.getElementById('pomo-fill').style.strokeDashoffset=pomoCirc-(pct*pomoCirc);
+  document.getElementById('pomo-fill').style.strokeDasharray=pomoCirc;
+  // Session dots
+  const dots=document.querySelectorAll('.pdot');
+  dots.forEach((d,i)=>d.classList.toggle('done',i<pomoSession));
+  document.getElementById('pomo-sess').textContent=`#${pomoSession+1} of 4`;
+}
+function togglePomo(){
+  if(pomoRunning){clearInterval(pomoTimer);pomoRunning=false;document.getElementById('pomo-start').textContent='▶ RESUME';}
+  else{pomoRunning=true;document.getElementById('pomo-start').textContent='⏸ PAUSE';pomoTimer=setInterval(()=>{if(pomoSec>0){pomoSec--;updPomo();}else{clearInterval(pomoTimer);pomoRunning=false;pomoSession=(pomoSession+1)%4;document.getElementById('pomo-start').textContent='▶ START';pomoBeep();toast('info',pomoMode==='work'?'🍅 Pomodoro complete! Take a break.':'☕ Break over! Time to focus.');if(pomoMode==='work')setPomoMode(pomoSession===0?'long':'short',pomoSession===0?15:5);else setPomoMode('work',25);}},1000);}
+}
+function resetPomo(){clearInterval(pomoTimer);pomoRunning=false;pomoSec=pomoMax;document.getElementById('pomo-start').textContent='▶ START';updPomo();}
+function skipPomo(){clearInterval(pomoTimer);pomoRunning=false;pomoSec=0;updPomo();togglePomo();}
+function pomoBeep(){try{const a=new(window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator(),g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;g.gain.value=.3;o.start();g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.8);o.stop(a.currentTime+.8);}catch(e){}}
+updPomo();
+
+// ══ AMBIENT SOUNDS ════════════════════════════════════
+let aCtx=null,aNodes={},aGains={},masterG=null,masterVol=0.4;
+function initAudio(){if(!aCtx){aCtx=new(window.AudioContext||window.webkitAudioContext)();masterG=aCtx.createGain();masterG.gain.value=masterVol;masterG.connect(aCtx.destination);}}
+function mkNoise(type='white'){const buf=aCtx.createBuffer(1,aCtx.sampleRate*4,aCtx.sampleRate);const d=buf.getChannelData(0);if(type==='white'){for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}else if(type==='pink'){let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;for(let i=0;i<d.length;i++){b0=.99886*b0+Math.random()*.0555179;b1=.99332*b1+Math.random()*.0750759;b2=.96900*b2+Math.random()*.1538520;b3=.86650*b3+Math.random()*.3104856;b4=.55000*b4+Math.random()*.5329522;b5=-.7616*b5-Math.random()*.0168980;d[i]=(b0+b1+b2+b3+b4+b5+b6+Math.random()*.5362)*0.11;b6=Math.random()*.115926;}}else{for(let i=0;i<d.length;i++){if(i===0)d[i]=Math.random()*2-1;else d[i]=(d[i-1]+.02*(Math.random()*2-1))/1.02;}}const s=aCtx.createBufferSource();s.buffer=buf;s.loop=true;return s;}
+function startSound(name){if(aNodes[name])return;initAudio();let src,filt,gain;gain=aCtx.createGain();gain.gain.value=0;
+  if(name==='rain'){src=mkNoise('white');filt=aCtx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=1100;src.connect(filt);filt.connect(gain);}
+  else if(name==='focus'){src=mkNoise('brown');filt=aCtx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=400;src.connect(filt);filt.connect(gain);}
+  else if(name==='ocean'){src=mkNoise('pink');const lfo=aCtx.createOscillator();const lfog=aCtx.createGain();lfo.frequency.value=.12;lfog.gain.value=.15;lfo.connect(lfog);const amp=aCtx.createGain();amp.gain.value=.5;lfog.connect(amp.gain);src.connect(amp);amp.connect(gain);lfo.start();}
+  else if(name==='cafe'){src=mkNoise('pink');filt=aCtx.createBiquadFilter();filt.type='bandpass';filt.frequency.value=1200;filt.Q.value=.7;src.connect(filt);filt.connect(gain);}
+  else if(name==='forest'){src=mkNoise('pink');filt=aCtx.createBiquadFilter();filt.type='highpass';filt.frequency.value=800;src.connect(filt);filt.connect(gain);}
+  else if(name==='space'){src=mkNoise('brown');filt=aCtx.createBiquadFilter();filt.type='lowpass';filt.frequency.value=200;src.connect(filt);filt.connect(gain);}
+  if(!src)return;
+  gain.connect(masterG);src.start();gain.gain.linearRampToValueAtTime(.6,aCtx.currentTime+1.5);
+  aNodes[name]=src;aGains[name]=gain;
+  const names={rain:'🌧️ Rain',focus:'🎯 Focus Noise',ocean:'🌊 Ocean Waves',cafe:'☕ Café Ambience',forest:'🌲 Forest',space:'🚀 Space Drone'};
+  document.getElementById('now-playing').textContent=names[name]||name;
+}
+function stopSound(name){if(!aNodes[name])return;const g=aGains[name];if(g){g.gain.linearRampToValueAtTime(.001,aCtx.currentTime+.8);setTimeout(()=>{try{aNodes[name].stop();}catch(e){}delete aNodes[name];delete aGains[name];},900);}else{try{aNodes[name].stop();}catch(e){}delete aNodes[name];}}
+function toggleSound(name){const el=document.getElementById('as-'+name);if(aNodes[name]){stopSound(name);el.classList.remove('on');const hasAny=Object.keys(aNodes).length>0;if(!hasAny)document.getElementById('now-playing').textContent='— Select a sound —';}else{startSound(name);el.classList.add('on');}}
+function setVolume(v){masterVol=v/100;document.getElementById('vol-val').textContent=v+'%';if(masterG)masterG.gain.value=masterVol;}
+
+// ══ CHATBOT ══════════════════════════════════════════
+async function sendChat(){
+  const inp=document.getElementById('chat-input');
+  const msg=inp.value.trim();if(!msg)return;
+  inp.value='';
+  addChatMsg('user',msg);
+  const typingEl=addTyping();
+  try{
+    const r=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+    const d=await r.json();
+    typingEl.remove();
+    addChatMsg('bot',d.response||'Sorry, I could not process that.');
+  }catch(e){typingEl.remove();addChatMsg('bot','Connection error. Make sure the Python server is running.');}
+}
+function quickChat(msg){document.getElementById('chat-input').value=msg;sendChat();}
+function addChatMsg(who,text){
+  const msgs=document.getElementById('chat-msgs');
+  const div=document.createElement('div');
+  div.className=`cmsg ${who==='user'?'user':''}`;
+  div.innerHTML=`<div class="cmsg-avatar ${who==='user'?'av-user':'av-bot'}">${who==='user'?'👤':'🧠'}</div><div class="cmsg-bubble ${who==='user'?'user-bubble':'bot-bubble'}">${text}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function addTyping(){
+  const msgs=document.getElementById('chat-msgs');
+  const div=document.createElement('div');
+  div.className='cmsg';
+  div.innerHTML=`<div class="cmsg-avatar av-bot">🧠</div><div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+// ══ PDF REPORT ════════════════════════════════════════
+function generatePDF(){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,M=18;
+  let y=0;
+
+  // Cover gradient background simulation
+  doc.setFillColor(3,7,15);doc.rect(0,0,W,297,'F');
+  doc.setFillColor(6,16,36);doc.rect(0,0,W,50,'F');
+
+  // Title
+  doc.setTextColor(0,238,255);doc.setFont('helvetica','bold');doc.setFontSize(28);
+  doc.text('NEURODESK',W/2,28,{align:'center'});
+  doc.setFontSize(11);doc.setTextColor(58,88,120);
+  doc.text('AI STUDY ENVIRONMENT MONITOR — SESSION REPORT',W/2,36,{align:'center'});
+  doc.setFontSize(9);doc.text(new Date().toLocaleString(),W/2,44,{align:'center'});
+
+  y=62;
+  // Session summary box
+  doc.setFillColor(8,14,28);doc.setDrawColor(26,53,96);doc.roundedRect(M,y,W-2*M,36,3,3,'FD');
+  doc.setTextColor(0,238,255);doc.setFontSize(10);doc.text('SESSION SUMMARY',M+6,y+8);
+  doc.setTextColor(184,204,224);doc.setFontSize(9);
+
+  const d=window._lastData||{};
+  const fs=d.focused_seconds||0,ps=d.phone_seconds||0,bp=d.bad_posture_seconds||0;
+  const total=Math.max(1,fs+ps+bp);
+  const sessionSec=Math.floor((Date.now()-t0)/1000);
+  const sh=Math.floor(sessionSec/3600),sm=Math.floor(sessionSec%3600/60),ss=sessionSec%60;
+
+  const cols=[[`Session Duration`,`${sh}h ${sm}m ${ss}s`],[`Focused Time`,`${Math.floor(fs/60)}m ${fs%60}s`],[`Phone Distraction`,`${Math.floor(ps/60)}m ${ps%60}s`],[`Focus Score`,`${Math.round(d.focus_score||100)}/100`]];
+  cols.forEach(([l,v],i)=>{const x=M+6+(i<2?0:86),yy=y+(i%2===0?16:26);doc.setTextColor(100,130,160);doc.text(l+':',x,yy);doc.setTextColor(184,204,224);doc.text(v,x+50,yy);});
+
+  y+=46;
+  // Sensor readings
+  doc.setFillColor(8,14,28);doc.setDrawColor(26,53,96);doc.roundedRect(M,y,W-2*M,44,3,3,'FD');
+  doc.setTextColor(0,136,255);doc.setFontSize(10);doc.text('LIVE SENSOR READINGS',M+6,y+8);
+  const sensors=[[`Temperature`,`${(d.temperature||0).toFixed(1)} °C`,d.temperature>35?[255,34,68]:[0,255,136]],[`Humidity`,`${(d.humidity||0).toFixed(1)} %`,d.humidity>70?[255,34,68]:[0,255,136]],[`Air Quality Index`,`${d.gas||0}`,d.gas>400?[255,34,68]:[0,255,136]],[`Light Level`,`${d.light_ao||0} lux`,d.light_ao>600?[255,170,0]:[0,255,136]]];
+  sensors.forEach(([l,v,c],i)=>{const x=M+6+(i<2?0:86),yy=y+18+(i%2)*12;doc.setTextColor(100,130,160);doc.text(l+':',x,yy);doc.setTextColor(...c);doc.text(v,x+50,yy);});
+
+  y+=54;
+  // Gas analysis
+  doc.setFillColor(8,14,28);doc.setDrawColor(26,53,96);doc.roundedRect(M,y,W-2*M,44,3,3,'FD');
+  doc.setTextColor(187,68,255);doc.setFontSize(10);doc.text('GAS ANALYSIS (MQ135 ESTIMATES)',M+6,y+8);
+  const g=d.gas||0,gf=g/300;
+  const gases2=[[`CO₂ (Carbon Dioxide)`,`${Math.round(400+gf*300)} ppm`],[`NH₃ (Ammonia)`,`${Math.round(gf*30)} ppm`],[`CO (Carbon Monoxide)`,`${Math.round(gf*8)} ppm`],[`VOC / Benzene`,`${Math.round(gf*80)} ppb`]];
+  gases2.forEach(([l,v],i)=>{const x=M+6+(i<2?0:86),yy=y+18+(i%2)*12;doc.setTextColor(100,130,160);doc.text(l+':',x,yy);doc.setTextColor(184,204,224);doc.text(v,x+50,yy);});
+
+  y+=54;
+  // Recommendations
+  doc.setFillColor(8,14,28);doc.setDrawColor(13,56,88);doc.roundedRect(M,y,W-2*M,56,3,3,'FD');
+  doc.setTextColor(0,255,136);doc.setFontSize(10);doc.text('NEURODESK RECOMMENDATIONS',M+6,y+8);
+  doc.setFontSize(8.5);doc.setTextColor(184,204,224);
+  const recs=[];
+  if(d.temperature>28)recs.push('• Room is warm. Consider cooling for better focus.');
+  if(d.humidity>60)recs.push('• High humidity detected. Ventilate the room.');
+  if(d.gas>400)recs.push('• Poor air quality! Open a window immediately.');
+  if(d.light_ao>600)recs.push('• Room too dark. Increase lighting to reduce eye strain.');
+  if(ps>300)recs.push(`• ${Math.floor(ps/60)} min on phone. Try putting it in another room.`);
+  if(bp>300)recs.push('• Significant time with bad posture. Adjust your chair height.');
+  if(recs.length===0)recs.push('• Excellent session! All parameters within optimal range.','• Keep up the great work. Consistency is key to success!');
+  recs.slice(0,5).forEach((r,i)=>doc.text(r,M+6,y+18+i*9));
+
+  // Footer
+  doc.setFillColor(6,10,20);doc.rect(0,272,W,25,'F');
+  doc.setTextColor(30,48,80);doc.setFontSize(8);
+  doc.text('Generated by NEURODESK AI Study Monitor',W/2,280,{align:'center'});
+  doc.text('AI-Powered Learning Environment Analysis System',W/2,286,{align:'center'});
+
+  doc.save(`NEURODESK_Report_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('info','📄 Report downloaded successfully!');
+}
+
+// ══ MAIN DATA FETCH ═══════════════════════════════════
+let prevType='';
+async function fetchData(){
+  try{
+    const data=await(await fetch('/data')).json();
+    window._lastData=data;
+
+    // Controls sync
+    if(data.webcam_on!==wOn||data.detection_on!==dOn){wOn=data.webcam_on;dOn=data.detection_on;syncCtrl();}
+
+    // Stats
+    aN(document.getElementById('s-focus'),Math.round(data.focus_score));
+    aN(document.getElementById('s-alerts'),data.session_alerts);
+    aN(document.getElementById('s-temp'),data.temperature,1);
+    aN(document.getElementById('s-hum'),data.humidity,1);
+    aN(document.getElementById('s-gas'),data.gas);
+    aN(document.getElementById('s-light'),data.light_ao||0);
+    const lsEl=document.getElementById('s-light-lbl');if(lsEl)lsEl.textContent=data.light_status||'lux';
+
+    // Gauges
+    setG('gf-temp','gv-temp',data.temperature,0,50);setG('gf-hum','gv-hum',data.humidity,0,100);setG('gf-gas','gv-gas',data.gas,0,800);setG('gf-light','gv-light',data.light_ao||0,0,1023);
+    document.getElementById('gi-temp').textContent=data.temperature.toFixed(1)+' °C';
+    document.getElementById('gi-hum').textContent=data.humidity.toFixed(1)+' %';
+    document.getElementById('gi-gas').textContent=data.gas+' idx';
+    document.getElementById('gi-light').textContent=(data.light_ao||0)+' lux';
+    document.getElementById('gs-temp').textContent=data.temperature>35?'⚠ Too hot':data.temperature<15?'❄ Cold':'✓ Good';
+    document.getElementById('gs-hum').textContent=data.humidity>70?'⚠ Humid':data.humidity<20?'⚠ Dry':'✓ Good';
+    document.getElementById('gs-gas').textContent=data.gas>400?'⚠ Poor':data.gas>200?'~ OK':'✓ Clean';
+    document.getElementById('gs-light').textContent=(data.light_ao||0)>600?'⚠ Dark':(data.light_ao||0)<100?'☀ Bright':'✓ Good';
+
+    // Banner
+    const bn=document.getElementById('banner');
+    const icons={good:'✅',posture:'⚠️',phone:'📵',environment:'💨',light:'🌑'};
+    const titles={good:'ALL SYSTEMS NOMINAL',posture:'POSTURE CORRECTION NEEDED',phone:'DISTRACTION DETECTED',environment:'ENVIRONMENT ALERT',light:'LOW LIGHT WARNING'};
+    bn.className=`bn-${data.alert_type}`;
+    document.getElementById('bn-icon').textContent=icons[data.alert_type]||'✅';
+    document.getElementById('bn-title').textContent=titles[data.alert_type]||'ALL GOOD';
+    document.getElementById('bn-sub').textContent=data.alert;
+    document.getElementById('bn-time').textContent=data.last_updated||'—';
+    const fills={good:100,posture:75,phone:60,environment:80,light:65};
+    document.getElementById('bn-fill').style.width=(fills[data.alert_type]||100)+'%';
+
+    // Network color + toast
+    const nc={good:0x0088ff,posture:0xff2244,phone:0xffaa00,environment:0xbb44ff,light:0xff5500};
+    if(window.setNetClr)window.setNetClr(nc[data.alert_type]||0x0088ff);
+    if(data.alert_type!==prevType){toast(data.alert_type,data.alert);prevType=data.alert_type;}
+
+    // Status items helper
+    function ssi(iId,dId,dscId,bId,state,desc,badge){
+      const sm={ok:'',bad:'bad',warn:'warn'};const dm={ok:'dg',bad:'dr',warn:'da',off:'dd'};const bm={ok:'bok',bad:'bbad',warn:'bwarn',off:'bdim'};
+      document.getElementById(iId).className='si '+(sm[state]||'');
+      document.getElementById(dId).className='sdot '+(dm[state]||'dd');
+      document.getElementById(dscId).textContent=desc;
+      const b=document.getElementById(bId);b.className='sbadge '+(bm[state]||'bdim');b.textContent=badge;
+    }
+    if(!data.detection_on){ssi('si-post','sd-post','ss-post','sb-post','off','Detection offline','Offline');ssi('si-phone','sd-phone','ss-phone','sb-phone','off','Detection offline','Offline');}
+    else if(data.posture==='Bad')ssi('si-post','sd-post','ss-post','sb-post','bad','Sit up straight!','Alert!');
+    else ssi('si-post','sd-post','ss-post','sb-post','ok','Posture looks great','Good ✓');
+    if(data.detection_on){if(data.phone==='Detected!')ssi('si-phone','sd-phone','ss-phone','sb-phone','warn','Phone in view!','Detected');else ssi('si-phone','sd-phone','ss-phone','sb-phone','ok','No phone detected','Clear ✓');}
+    const envBad=data.temperature>35||data.humidity>70||data.gas>400;
+    ssi('si-env','sd-env','ss-env','sb-env',envBad?'bad':'ok',envBad?'Check environment':`${data.temperature.toFixed(1)}°C · ${data.humidity.toFixed(0)}% · ${data.gas}idx`,envBad?'Alert!':'Good ✓');
+    const lightBad=(data.light_ao||0)>600;
+    ssi('si-light','sd-light','ss-light','sb-light',lightBad?'bad':'ok',lightBad?'Room too dark!':`${data.light_status||'Good'} · ${data.light_ao||0}lux`,lightBad?'Alert!':'Good ✓');
+
+    // Charts
+    if(data.time_history&&data.time_history.length){
+      updC(cTemp,data.time_history,data.temp_history);
+      updC(cHum,data.time_history,data.hum_history);
+      updC(cGas,data.time_history,data.gas_history);
+      if(data.light_history&&data.light_history.length)updC(cLight,data.time_history,data.light_history);
+    }
+
+    // Study analytics
+    updAnalytics(data);
+
+    // Gas analysis
+    updGases(data.gas||0);
+
+    // Log
+    addLog(data.alert_type,data.alert);
+
+  }catch(e){console.log('fetch error',e);}
+}
+fetchData();
+setInterval(fetchData,2000);
+</script>
+</body>
+</html>
